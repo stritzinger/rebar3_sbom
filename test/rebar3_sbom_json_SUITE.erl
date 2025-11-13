@@ -87,7 +87,6 @@ version_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"version">> := Version} = SBoMJSON,
     % Since the app doesn't have a sbom version should be 1
-    % TODO verify that version increases in another test case
     ?assertEqual(1, Version).
 
 serial_number_change_test(Config) ->
