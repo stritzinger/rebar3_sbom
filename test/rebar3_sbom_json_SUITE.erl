@@ -8,6 +8,7 @@
 
 % Testcases
 -export([required_fields_test/1]).
+-export([serial_number_test/1]).
 
 
 % Includes
@@ -16,11 +17,15 @@
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("rebar3_sbom/include/rebar3_sbom.hrl").
 
+% Macros
+-define(SERIAL_NB_REGEX, "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$").
+
 %--- Common test functions -----------------------------------------------------o
 
 all() -> [{group, basic_app}].
 
-groups() -> [{basic_app, [], [required_fields_test]}].
+groups() -> [{basic_app, [], [required_fields_test,
+                              serial_number_test]}].
 
 init_per_suite(Config) ->
     Config.
@@ -61,6 +66,11 @@ required_fields_test(Config) ->
     #{<<"bomFormat">> := BomFormat, <<"specVersion">> := SpecVersion} = JsonTerm,
     ?assertEqual(<<"CycloneDX">>, BomFormat),
     ?assertEqual(<<?SPEC_VERSION/bitstring>>, SpecVersion).
+
+serial_number_test(Config) ->
+    JsonTerm = ?config(json_term, Config),
+    #{<<"serialNumber">> := SerialNumber} = JsonTerm,
+    ?assertNotEqual(nomatch, re:run(SerialNumber, ?SERIAL_NB_REGEX)).
 
 %--- Private -------------------------------------------------------------------
 get_app_dir(DataDir) ->
