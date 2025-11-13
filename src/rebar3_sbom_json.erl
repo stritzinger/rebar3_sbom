@@ -4,7 +4,6 @@
 
 -include("rebar3_sbom.hrl").
 
--define(SPEC_VERSION, <<"1.6">>).
 -define(SCHEMA, <<"http://cyclonedx.org/schema/bom-1.6.schema.json">>).
 
 encode(SBoM) ->
