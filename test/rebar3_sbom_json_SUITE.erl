@@ -9,6 +9,7 @@
 % Testcases
 -export([required_fields_test/1]).
 -export([serial_number_test/1]).
+-export([version_test/1]).
 
 
 % Includes
@@ -25,7 +26,8 @@
 all() -> [{group, basic_app}].
 
 groups() -> [{basic_app, [], [required_fields_test,
-                              serial_number_test]}].
+                              serial_number_test,
+                              version_test]}].
 
 init_per_suite(Config) ->
     Config.
@@ -71,6 +73,13 @@ serial_number_test(Config) ->
     JsonTerm = ?config(json_term, Config),
     #{<<"serialNumber">> := SerialNumber} = JsonTerm,
     ?assertNotEqual(nomatch, re:run(SerialNumber, ?SERIAL_NB_REGEX)).
+
+version_test(Config) ->
+    JsonTerm = ?config(json_term, Config),
+    #{<<"version">> := Version} = JsonTerm,
+    % Since the app doesn't have a sbom version should be 1
+    % TODO verify that version increases in another test case
+    ?assertEqual(1, Version).
 
 %--- Private -------------------------------------------------------------------
 get_app_dir(DataDir) ->
