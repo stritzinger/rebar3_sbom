@@ -11,14 +11,16 @@
 -export([serial_number_test/1]).
 -export([version_test/1]).
 
+% metadata group test cases
 -export([timestamp_test/1]).
+-export([tools_test/1]).
 
+% basic app with sbom group test cases
 -export([serial_number_change_test/1]).
 -export([version_increment_test/1]).
 -export([timestamp_increases_test/1]).
 
 % Includes
-
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("rebar3_sbom/include/rebar3_sbom.hrl").
@@ -36,7 +38,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                               version_test,
                               {group, metadata},
                               {group, basic_app_with_sbom}]},
-             {metadata, [], [timestamp_test]},
+             {metadata, [], [timestamp_test,
+                             tools_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -67,6 +70,9 @@ init_per_group(basic_app_with_sbom, Config) ->
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{new_sbom_json, NewSBoMJSON} | Config];
+init_per_group(metadata, Config) ->
+    #{<<"metadata">> := Metadata} = ?config(sbom_json, Config),
+    [{metadata, Metadata} | Config];
 init_per_group(_, Config) ->
     Config.
 
@@ -81,6 +87,7 @@ end_per_testcase(_, _Config) ->
 
 %--- Tests ---------------------------------------------------------------------
 
+%--- basic_app group ---
 required_fields_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"bomFormat">> := BomFormat, <<"specVersion">> := SpecVersion} = SBoMJSON,
@@ -98,6 +105,7 @@ version_test(Config) ->
     % Since the app doesn't have a sbom version should be 1
     ?assertEqual(1, Version).
 
+%--- metadata group ---
 timestamp_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"metadata">> := Metadata} = SBoMJSON,
@@ -108,6 +116,17 @@ timestamp_test(Config) ->
     TsSysTime = calendar:rfc3339_to_system_time(Timestamp),
     ?assert(TsSysTime < SysTimeNow).
 
+tools_test(Config) ->
+    % Assume that in basic_app we only have a component for rebar3_sbom
+    #{<<"tools">> := Tools} = ?config(metadata, Config),
+    ?assertMatch([_], Tools),
+    [Tool] = Tools,
+    check_component_constraints(Tool),
+    #{<<"type">> := Type, <<"name">> := Name} = Tool,
+    ?assertEqual(<<"application">>, Type),
+    ?assertEqual(<<"rebar3_sbom">>, Name).
+
+%--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
     OldSBoMJSON = ?config(sbom_json, Config),
     NewSBoMJSON = ?config(new_sbom_json, Config),
@@ -154,3 +173,21 @@ init_rebar_state(Config) ->
     {ok, State3} = rebar3:run(State2, ["compile"]),
     {ok, NewState} = rebar3_sbom_prv:init(State3),
     NewState.
+
+check_component_constraints(Component) ->
+    case Component of
+        #{<<"version">> := _, <<"versionRange">> := _} ->
+            ct:fail("Requirement 1: version and versionRange shall not be "
+                    ++ "present simultaneously.");
+        #{<<"isExternal">> := false, <<"versionRange">> := _} ->
+            ct:fail("Requirement 2: versionRange must not be present when "
+                    ++ "isExternal is false.");
+        #{<<"author">> := _} ->
+            ct:fail("author field is deprecated");
+        #{<<"modified">> := _} ->
+            ct:fail("modified field is deprecated");
+        #{<<"type">> := _, <<"name">> := _} ->
+            ok;
+        _ ->
+            ct:fail("Missing required field 'type' and/or 'name'")
+    end.
