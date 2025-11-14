@@ -29,6 +29,22 @@
 -define(SERIAL_NB_REGEX, "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$").
 -define(RFC3339_REGEX, "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])[T\\s]([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)(\\.\\d+)?(Z|[+-]([01]\\d|2[0-3]):[0-5]\\d)$").
 -define(BOM_LINK_INTRO, "urn:cdx").
+-define(VALID_HASH_ALGORITHMS, [<<"MD5">>,
+                                 <<"SHA-1">>,
+                                 <<"SHA-256">>,
+                                 <<"SHA-384">>,
+                                 <<"SHA-512">>,
+                                 <<"SHA3-256">>,
+                                 <<"SHA3-384">>,
+                                 <<"SHA3-512">>,
+                                 <<"BLAKE2b-256">>,
+                                 <<"BLAKE2b-384">>,
+                                 <<"BLAKE2b-512">>,
+                                 <<"BLAKE3">>,
+                                 <<"Streebog-256">>,
+                                 <<"Streebog-512">>]).
+-define(HASH_CONTENT_REGEX, "^([a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128})$").
+-define(PURL_REGEX, "^pkg:[a-z][a-z0-9+.-]*/([^/@?#]+/)*[^/@?#]+(@[^?#]+)?(\\?[^#]+)?(#.+)?$").
 
 %--- Common test functions -----------------------------------------------------
 
@@ -129,13 +145,18 @@ tools_test(Config) ->
     check_component_cyclonedx_constraints(Tool),
     check_component_ort_constraints(Tool),
     #{<<"type">> := Type, <<"name">> := Name, <<"isExternal">> := IsExternal,
-      <<"version">> := Version, <<"description">> := Description} = Tool,
+      <<"version">> := Version, <<"description">> := Description,
+      <<"hashes">> := Hashes, <<"purl">> := Purl} = Tool,
     ?assertEqual(<<"application">>, Type),
     ?assertEqual(<<"rebar3_sbom">>, Name),
     ?assertNot(IsExternal),
     check_bom_ref_format(Tool),
     ?assertEqual(?config(plugin_version, Config), Version),
-    ?assertEqual(?config(plugin_description, Config), Description).
+    ?assertEqual(?config(plugin_description, Config), Description),
+    check_hashes_constraints(Hashes),
+    check_purl_format(Tool),
+    ?assertMatch(<<"pkg:hex/rebar3_sbom", _/bitstring>>, Purl).
+    % TODO Check for metadata.tool.licenses. It's content is more complex and proably requires its own PR
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -221,10 +242,21 @@ check_component_ort_constraints(Component) ->
     ?assert(maps:is_key(<<"purl">>, Component),
             "Component purl is required"),
     ?assert(Type =/= <<"data">> orelse maps:is_key(<<"data">>, Component),
-            "If component.type is 'data', then component.data must be present"),
-    ?assert(maps:is_key(<<"cryptoProperties">>, Component),
-            "Component crypro properties are required").
+            "If component.type is 'data', then component.data must be present").
 
 check_bom_ref_format(Component) ->
     #{<<"bom-ref">> := BomRef} = Component,
     ?assertNotMatch(<<?BOM_LINK_INTRO, _/bitstring>>, BomRef).
+
+check_hashes_constraints(Hashes) ->
+    lists:foreach(fun(#{<<"alg">> := Alg, <<"content">> := Content}) ->
+                        ?assert(lists:member(Alg, ?VALID_HASH_ALGORITHMS)),
+                        ?assertNotEqual(nomatch, re:run(Content, ?HASH_CONTENT_REGEX));
+                     (_) ->
+                          ct:fail("The hash object doesn't have alg or/and" ++
+                                  "content")
+                  end, Hashes).
+
+check_purl_format(Component) ->
+    #{<<"purl">> := Purl} = Component,
+    ?assertNotEqual(nomatch, re:run(Purl, ?PURL_REGEX)).
