@@ -14,6 +14,8 @@
 % metadata group test cases
 -export([timestamp_test/1]).
 -export([tools_test/1]).
+-export([licenses_test/1]).
+-export([component_test/1]).
 
 % basic app with sbom group test cases
 -export([serial_number_change_test/1]).
@@ -57,7 +59,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                               {group, basic_app_with_sbom}]},
              {metadata, [], [timestamp_test,
                              tools_test, % TODO maybe add author test
-                             licenses_test]},
+                             licenses_test,
+                             component_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -143,8 +146,7 @@ tools_test(Config) ->
     #{<<"tools">> := Tools} = ?config(metadata, Config),
     ?assertMatch([_], Tools),
     [Tool] = Tools,
-    check_component_cyclonedx_constraints(Tool),
-    check_component_ort_constraints(Tool),
+    check_component_constraints(Tool),
     #{<<"type">> := Type, <<"name">> := Name, <<"isExternal">> := IsExternal,
       <<"version">> := Version, <<"description">> := Description,
       <<"hashes">> := Hashes, <<"purl">> := Purl} = Tool,
@@ -155,15 +157,36 @@ tools_test(Config) ->
     ?assertEqual(?config(plugin_version, Config), Version),
     ?assertEqual(?config(plugin_description, Config), Description),
     check_hashes_constraints(Hashes), % TODO Test if hashes values are correct
-    check_purl_format(Tool),
+    check_purl_format(Purl),
     ?assertMatch(<<"pkg:hex/rebar3_sbom", _/bitstring>>, Purl).
     % TODO Check for metadata.tool.licenses. It's content is more complex and proably requires its own PR
 
 licenses_test(Config) ->
-    #{<<"licenses">> := Licenses} = ?config(metadata, Config),
-    ?assertMatch([_], Licenses),
-    [License] = Licenses.
+    Metadata = ?config(metadata, Config),
+    ?assertMatch(#{<<"licenses">> := [_]}, Metadata,
+                 "metadata.licenses is missing"),
+    #{<<"licenses">> := Licenses} = Metadata,
+    [_License] = Licenses.
     % TODO Test if licenses values are correct
+
+component_test(Config) ->
+    #{<<"component">> := Component} = ?config(metadata, Config),
+    check_component_constraints(Component),
+    #{<<"type">> := Type, <<"name">> := Name, <<"version">> := Version,
+      <<"isExternal">> := IsExternal, <<"description">> := Description,
+      <<"hashes">> := Hashes, <<"licences">> := _Licenses,
+      <<"purl">> := Purl} = Component,
+    ?assertEqual(<<"application">>, Type, "metadata.component.type"),
+    ?assertEqual(<<"basic_app">>, Name, "metadata.component.name"),
+    ?assertEqual(<<"0.1.0">>, Version, "metadata.component.version"),
+    ?assertEqual(<<"false">>, IsExternal, "metadata.component.isExternal"),
+    ?assertEqual(<<"An OTP application">>, Description,
+                 "metadata.component.description"),
+    check_hashes_constraints(Hashes),
+    % TODO check hashes content
+    % TODO check licenses content
+    check_purl_format(Purl),
+    ?assertEqual(<<"pkg:generic/basic_app@0.1.0">>, Purl).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -213,6 +236,10 @@ init_rebar_state(Config) ->
     {ok, NewState} = rebar3_sbom_prv:init(State3),
     NewState.
 
+check_component_constraints(Component) ->
+    check_component_cyclonedx_constraints(Component),
+    check_component_ort_constraints(Component).
+
 % These are the constraints defined by the CycloneDX JSON reference
 check_component_cyclonedx_constraints(Component) ->
     case Component of
@@ -234,20 +261,21 @@ check_component_cyclonedx_constraints(Component) ->
 
 % These are the constraints that we impose for ORT
 check_component_ort_constraints(Component) ->
-    #{<<"type">> := Type} = Component,
     ?assert(maps:is_key(<<"bom-ref">>, Component),
-           "Component bom-ref is required"),
+           "Component bom-ref is missing"),
+    #{<<"type">> := Type, <<"bom-ref">> := BomRef} = Component,
+    ?assertMatch([_ | _], binary_to_list(BomRef)),
     ?assert(maps:is_key(<<"version">>, Component) orelse
             maps:is_key(<<"versionRange">>, Component),
-            "Component version or version range is required"),
+            "Component version or version range is missing"),
     ?assert(maps:is_key(<<"description">>, Component),
-            "Component description is required"),
+            "Component description is missing"),
     ?assert(maps:is_key(<<"hashes">>, Component),
-            "Component hashes are required"),
+            "Component hashes are missing"),
     ?assert(maps:is_key(<<"licenses">>, Component),
             "Component licenses are required"),
     ?assert(maps:is_key(<<"purl">>, Component),
-            "Component purl is required"),
+            "Component purl is missing"),
     ?assert(Type =/= <<"data">> orelse maps:is_key(<<"data">>, Component),
             "If component.type is 'data', then component.data must be present").
 
@@ -264,6 +292,5 @@ check_hashes_constraints(Hashes) ->
                                   "content")
                   end, Hashes).
 
-check_purl_format(Component) ->
-    #{<<"purl">> := Purl} = Component,
+check_purl_format(Purl) ->
     ?assertNotEqual(nomatch, re:run(Purl, ?PURL_REGEX)).
