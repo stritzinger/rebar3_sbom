@@ -28,6 +28,7 @@
 % Macros
 -define(SERIAL_NB_REGEX, "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$").
 -define(RFC3339_REGEX, "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])[T\\s]([01]\\d|2[0-3]):([0-5]\\d):([0-5]\\d)(\\.\\d+)?(Z|[+-]([01]\\d|2[0-3]):[0-5]\\d)$").
+-define(BOM_LINK_INTRO, "urn:cdx").
 
 %--- Common test functions -----------------------------------------------------
 
@@ -45,7 +46,11 @@ groups() -> [{basic_app, [], [required_fields_test,
                                         timestamp_increases_test]}].
 
 init_per_suite(Config) ->
-    Config.
+    application:load(rebar3_sbom),
+    {ok, PluginVersion} = application:get_key(rebar3_sbom, vsn),
+    {ok, PluginDescription} = application:get_key(rebar3_sbom, description),
+    [{plugin_version, list_to_binary(PluginVersion)},
+     {plugin_description, list_to_binary(PluginDescription)} | Config].
 
 end_per_suite(_Config) ->
     ok.
@@ -123,10 +128,14 @@ tools_test(Config) ->
     [Tool] = Tools,
     check_component_cyclonedx_constraints(Tool),
     check_component_ort_constraints(Tool),
-    #{<<"type">> := Type, <<"name">> := Name, <<"isExternal">> := IsExternal} = Tool,
+    #{<<"type">> := Type, <<"name">> := Name, <<"isExternal">> := IsExternal,
+      <<"version">> := Version, <<"description">> := Description} = Tool,
     ?assertEqual(<<"application">>, Type),
     ?assertEqual(<<"rebar3_sbom">>, Name),
-    ?assertNot(IsExternal).
+    ?assertNot(IsExternal),
+    check_bom_ref_format(Tool),
+    ?assertEqual(?config(plugin_version, Config), Version),
+    ?assertEqual(?config(plugin_description, Config), Description).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -215,3 +224,7 @@ check_component_ort_constraints(Component) ->
             "If component.type is 'data', then component.data must be present"),
     ?assert(maps:is_key(<<"cryptoProperties">>, Component),
             "Component crypro properties are required").
+
+check_bom_ref_format(Component) ->
+    #{<<"bom-ref">> := BomRef} = Component,
+    ?assertNotMatch(<<?BOM_LINK_INTRO, _/bitstring>>, BomRef).
