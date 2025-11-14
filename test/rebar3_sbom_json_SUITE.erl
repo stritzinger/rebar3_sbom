@@ -121,10 +121,12 @@ tools_test(Config) ->
     #{<<"tools">> := Tools} = ?config(metadata, Config),
     ?assertMatch([_], Tools),
     [Tool] = Tools,
-    check_component_constraints(Tool),
-    #{<<"type">> := Type, <<"name">> := Name} = Tool,
+    check_component_cyclonedx_constraints(Tool),
+    check_component_ort_constraints(Tool),
+    #{<<"type">> := Type, <<"name">> := Name, <<"isExternal">> := IsExternal} = Tool,
     ?assertEqual(<<"application">>, Type),
-    ?assertEqual(<<"rebar3_sbom">>, Name).
+    ?assertEqual(<<"rebar3_sbom">>, Name),
+    ?assertNot(IsExternal).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -174,7 +176,8 @@ init_rebar_state(Config) ->
     {ok, NewState} = rebar3_sbom_prv:init(State3),
     NewState.
 
-check_component_constraints(Component) ->
+% These are the constraints defined by the CycloneDX JSON reference
+check_component_cyclonedx_constraints(Component) ->
     case Component of
         #{<<"version">> := _, <<"versionRange">> := _} ->
             ct:fail("Requirement 1: version and versionRange shall not be "
@@ -191,3 +194,24 @@ check_component_constraints(Component) ->
         _ ->
             ct:fail("Missing required field 'type' and/or 'name'")
     end.
+
+% These are the constraints that we impose for ORT
+check_component_ort_constraints(Component) ->
+    #{<<"type">> := Type} = Component,
+    ?assert(maps:is_key(<<"bom-ref">>, Component),
+           "Component bom-ref is required"),
+    ?assert(maps:is_key(<<"version">>, Component) orelse
+            maps:is_key(<<"versionRange">>, Component),
+            "Component version or version range is required"),
+    ?assert(maps:is_key(<<"description">>, Component),
+            "Component description is required"),
+    ?assert(maps:is_key(<<"hashes">>, Component),
+            "Component hashes are required"),
+    ?assert(maps:is_key(<<"licenses">>, Component),
+            "Component licenses are required"),
+    ?assert(maps:is_key(<<"purl">>, Component),
+            "Component purl is required"),
+    ?assert(Type =/= <<"data">> orelse maps:is_key(<<"data">>, Component),
+            "If component.type is 'data', then component.data must be present"),
+    ?assert(maps:is_key(<<"cryptoProperties">>, Component),
+            "Component crypro properties are required").
