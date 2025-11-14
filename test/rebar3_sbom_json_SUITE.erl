@@ -56,7 +56,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                               {group, metadata},
                               {group, basic_app_with_sbom}]},
              {metadata, [], [timestamp_test,
-                             tools_test]},
+                             tools_test, % TODO maybe add author test
+                             licenses_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -153,10 +154,16 @@ tools_test(Config) ->
     check_bom_ref_format(Tool),
     ?assertEqual(?config(plugin_version, Config), Version),
     ?assertEqual(?config(plugin_description, Config), Description),
-    check_hashes_constraints(Hashes),
+    check_hashes_constraints(Hashes), % TODO Test if hashes values are correct
     check_purl_format(Tool),
     ?assertMatch(<<"pkg:hex/rebar3_sbom", _/bitstring>>, Purl).
     % TODO Check for metadata.tool.licenses. It's content is more complex and proably requires its own PR
+
+licenses_test(Config) ->
+    #{<<"licenses">> := Licenses} = ?config(metadata, Config),
+    ?assertMatch([_], Licenses),
+    [License] = Licenses.
+    % TODO Test if licenses values are correct
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
