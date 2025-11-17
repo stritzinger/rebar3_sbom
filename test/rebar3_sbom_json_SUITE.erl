@@ -232,9 +232,13 @@ init_rebar_state(Config) ->
                 {base_dir, BaseDir},
                 {root_dir, AppDir}
                ]),
-    State2 = rebar_state:dir(State, AppDir),
-    {ok, State3} = rebar3:run(State2, ["compile"]),
-    {ok, NewState} = rebar3_sbom_prv:init(State3),
+    RebarConfig = rebar_config:consult(AppDir),
+    State2 = rebar_state:new(State, RebarConfig, AppDir),
+    % Install dependencies first
+    {ok, State3} = rebar3:run(State2, ["install_deps"]),
+    % Then compile
+    {ok, State4} = rebar3:run(State3, ["compile"]),
+    {ok, NewState} = rebar3_sbom_prv:init(State4),
     NewState.
 
 check_component_constraints(Component) ->
