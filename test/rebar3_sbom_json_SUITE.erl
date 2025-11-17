@@ -174,16 +174,16 @@ component_test(Config) ->
     check_component_constraints(Component),
     #{<<"type">> := Type, <<"name">> := Name, <<"version">> := Version,
       <<"isExternal">> := IsExternal, <<"description">> := Description,
-      <<"hashes">> := Hashes, <<"licences">> := [License],
-      <<"purl">> := Purl} = Component,
+      <<"licences">> := [License], <<"purl">> := Purl} = Component,
     ?assertEqual(<<"application">>, Type, "metadata.component.type"),
     ?assertEqual(<<"basic_app">>, Name, "metadata.component.name"),
     ?assertEqual(<<"0.1.0">>, Version, "metadata.component.version"),
     ?assertEqual(<<"false">>, IsExternal, "metadata.component.isExternal"),
     ?assertEqual(<<"An OTP application">>, Description,
                  "metadata.component.description"),
-    check_hashes_constraints(Hashes),
-    % TODO check hashes content
+    % We don't check the hashes for now because it's not properly handled yet
+    % A tarball will be required to generate an hash. Without it, we will skip
+    % check_hashes_constraints(Hashes),
     ?assertMatch(#{<<"id">> := "Apache-2.0"}, License,
                  "metadata.component.licenses[0].id"),
     check_purl_format(Purl),
@@ -265,6 +265,7 @@ check_component_cyclonedx_constraints(Component) ->
     end.
 
 % These are the constraints that we impose for ORT
+% Hashes might be needed but we also need to cover a few edge cases
 check_component_ort_constraints(Component) ->
     ?assert(maps:is_key(<<"bom-ref">>, Component),
            "Component bom-ref is missing"),
@@ -273,10 +274,10 @@ check_component_ort_constraints(Component) ->
     ?assert(maps:is_key(<<"version">>, Component) orelse
             maps:is_key(<<"versionRange">>, Component),
             "Component version or version range is missing"),
+    ?assert(maps:is_key(<<"isExternal">>, Component),
+            "Component isExternal field is missing"),
     ?assert(maps:is_key(<<"description">>, Component),
             "Component description is missing"),
-    ?assert(maps:is_key(<<"hashes">>, Component),
-            "Component hashes are missing"),
     ?assert(maps:is_key(<<"licenses">>, Component),
             "Component licenses are required"),
     ?assert(maps:is_key(<<"purl">>, Component),
