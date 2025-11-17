@@ -136,7 +136,7 @@ timestamp_test(Config) ->
     #{<<"metadata">> := Metadata} = SBoMJSON,
     #{<<"timestamp">> := Timestamp} = Metadata,
     ?assertNotEqual(nomatch, re:run(Timestamp, ?RFC3339_REGEX)),
-    timer:sleep(1000), % Make sure that TS should be different
+    timer:sleep(1000), % Make sure that TS is different
     SysTimeNow = erlang:system_time(second),
     TsSysTime = calendar:rfc3339_to_system_time(Timestamp),
     ?assert(TsSysTime < SysTimeNow).
@@ -149,7 +149,8 @@ tools_test(Config) ->
     check_component_constraints(Tool),
     #{<<"type">> := Type, <<"name">> := Name, <<"isExternal">> := IsExternal,
       <<"version">> := Version, <<"description">> := Description,
-      <<"hashes">> := Hashes, <<"purl">> := Purl} = Tool,
+      <<"hashes">> := Hashes, <<"purl">> := Purl,
+      <<"licenses">> := [License]} = Tool,
     ?assertEqual(<<"application">>, Type),
     ?assertEqual(<<"rebar3_sbom">>, Name),
     ?assertNot(IsExternal),
@@ -158,23 +159,22 @@ tools_test(Config) ->
     ?assertEqual(?config(plugin_description, Config), Description),
     check_hashes_constraints(Hashes), % TODO Test if hashes values are correct
     check_purl_format(Purl),
-    ?assertMatch(<<"pkg:hex/rebar3_sbom", _/bitstring>>, Purl).
-    % TODO Check for metadata.tool.licenses. It's content is more complex and proably requires its own PR
+    ?assertMatch(<<"pkg:hex/rebar3_sbom", _/bitstring>>, Purl),
+    ?assertMatch(#{<<"license">> := #{<<"id">> := <<"Apache-2.0">>}}, License).
 
 licenses_test(Config) ->
     Metadata = ?config(metadata, Config),
     ?assertMatch(#{<<"licenses">> := [_]}, Metadata,
                  "metadata.licenses is missing"),
-    #{<<"licenses">> := Licenses} = Metadata,
-    [_License] = Licenses.
-    % TODO Test if licenses values are correct
+    #{<<"licenses">> := [License]} = Metadata,
+    ?assertMatch(#{<<"license">> := #{<<"id">> := <<"Apache-2.0">>}}, License).
 
 component_test(Config) ->
     #{<<"component">> := Component} = ?config(metadata, Config),
     check_component_constraints(Component),
     #{<<"type">> := Type, <<"name">> := Name, <<"version">> := Version,
       <<"isExternal">> := IsExternal, <<"description">> := Description,
-      <<"hashes">> := Hashes, <<"licences">> := _Licenses,
+      <<"hashes">> := Hashes, <<"licences">> := [License],
       <<"purl">> := Purl} = Component,
     ?assertEqual(<<"application">>, Type, "metadata.component.type"),
     ?assertEqual(<<"basic_app">>, Name, "metadata.component.name"),
@@ -184,7 +184,8 @@ component_test(Config) ->
                  "metadata.component.description"),
     check_hashes_constraints(Hashes),
     % TODO check hashes content
-    % TODO check licenses content
+    ?assertMatch(#{<<"id">> := "Apache-2.0"}, License,
+                 "metadata.component.licenses[0].id"),
     check_purl_format(Purl),
     ?assertEqual(<<"pkg:generic/basic_app@0.1.0">>, Purl).
 
