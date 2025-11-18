@@ -80,15 +80,14 @@ init_per_group(basic_app, Config) ->
     PrivDir = ?config(priv_dir, Config),
     SBoMPath = filename:join(PrivDir, "bom.json"),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false"],
-    {ok, FinalState} = rebar3:run(State, Cmd),
+    {ok, _FinalState} = rebar3:run(State, Cmd),
     {ok, File} = file:read_file(SBoMPath),
     SBoMJSON = json:decode(File),
     [{sbom_path, SBoMPath},
-     {sbom_json, SBoMJSON},
-     {rebar_state, FinalState} | Config];
+     {sbom_json, SBoMJSON} | Config];
 init_per_group(basic_app_with_sbom, Config) ->
     timer:sleep(1000), % makes sure that new generated TS must be different
-    State = ?config(rebar_state, Config),
+    State = init_rebar_state(Config),
     SBoMPath = ?config(sbom_path, Config),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
     {ok, _FinalState} = rebar3:run(State, Cmd),
@@ -234,11 +233,7 @@ init_rebar_state(Config) ->
                ]),
     RebarConfig = rebar_config:consult(AppDir),
     State2 = rebar_state:new(State, RebarConfig, AppDir),
-    % Install dependencies first
-    {ok, State3} = rebar3:run(State2, ["install_deps"]),
-    % Then compile
-    {ok, State4} = rebar3:run(State3, ["compile"]),
-    {ok, NewState} = rebar3_sbom_prv:init(State4),
+    {ok, NewState} = rebar3_sbom_prv:init(State2),
     NewState.
 
 check_component_constraints(Component) ->
