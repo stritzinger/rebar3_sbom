@@ -101,8 +101,6 @@ uuid() ->
 hex(Bin) ->
     string:lowercase(<< <<Hex>> || <<Nibble:4>> <= Bin, Hex <- integer_to_list(Nibble,16) >>).
 
-dependencies(undefined) ->
-    [];
 dependencies(RawComponents) ->
     [dependency(RawComponent) || RawComponent <- RawComponents].
 

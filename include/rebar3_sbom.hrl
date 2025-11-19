@@ -9,13 +9,13 @@
 -record(component, {
     type = "application",
     bom_ref :: string(),
-    authors :: [#{name := string()}],
+    authors = [] :: [#{name := string()}],
     name :: string(),
     version :: string(),
     description :: string(),
-    hashes :: [#{alg := string(), hash := string()}],
-    licenses :: [#{name := string()} | #{id := string()}],
-    externalReferences :: [#{type := string(), url := string()}],
+    hashes = [] :: [#{alg := string(), hash := string()}],
+    licenses = [] :: [#{name := string()} | #{id := string()}],
+    externalReferences = [] :: [#{type := string(), url := string()}],
     purl :: string()
 }).
 
@@ -33,8 +33,8 @@
 -record(sbom, {
     format = "CycloneDX" :: string(),
     version = ?DEFAULT_VERSION :: integer(),
-    serial :: string(),
-    metadata :: #metadata{},
+    serial :: string() | undefined,
+    metadata :: #metadata{} | undefined,
     components :: [#component{}],
-    dependencies :: [#dependency{}]
+    dependencies = [] :: [#dependency{}]
 }).

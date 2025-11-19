@@ -74,8 +74,6 @@ component_to_xml(C) ->
 prune_content(Content) ->
     lists:filter(fun(Field) -> Field =/= undefined end, Content).
 
-component_field_to_xml(_, undefined) ->
-    undefined;
 component_field_to_xml(authors, Authors) ->
     {authors, [author_to_xml(Author) || Author <- Authors]};
 component_field_to_xml(hashes, Hashes) ->
