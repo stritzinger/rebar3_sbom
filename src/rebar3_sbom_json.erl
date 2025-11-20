@@ -57,32 +57,24 @@ component_to_json(C) ->
 prune_content(Component) ->
     maps:filter(fun(_, Value) -> Value =/= undefined end, Component).
 
-authors_to_json(undefined) ->
-    undefined;
 authors_to_json(Authors) ->
     [author_to_json(A) || A <- Authors].
 
 author_to_json(#{name := Name}) ->
     #{name => bin(Name)}.
 
-hashes_to_json(undefined) ->
-    undefined;
 hashes_to_json(Hashes) ->
     [hash_to_json(H) || H <- Hashes].
 
 hash_to_json(#{alg := Alg, hash := Hash}) ->
     #{alg => bin(Alg), content => bin(Hash)}.
 
-external_references_to_json(undefined) ->
-    undefined;
 external_references_to_json(ExternalReferences) ->
     [external_reference_to_json(R) || R <- ExternalReferences].
 
 external_reference_to_json(#{type := Type, url := Url}) ->
     #{type => bin(Type), url => bin(Url)}.
 
-licenses_to_json(undefined) ->
-    undefined;
 licenses_to_json(Licenses) ->
     [license_to_json(L) || L <- Licenses].
 
