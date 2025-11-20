@@ -1,11 +1,11 @@
 name: Erlang CI
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
     paths-ignore:
       - "sbom.json"
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
     paths-ignore:
       - "sbom.json"
 
