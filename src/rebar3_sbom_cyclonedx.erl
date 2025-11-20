@@ -50,30 +50,30 @@ component(RawComponent) ->
 component_field(authors = Field, RawComponent) ->
     case proplists:get_value(Field, RawComponent) of
         undefined ->
-            undefined;
+            [];
         Values ->
             [#{name => V} || V <- Values]
     end;
 component_field(licenses = Field, RawComponent) ->
     case proplists:get_value(Field, RawComponent) of
         undefined ->
-            undefined;
+            [];
         Licenses ->
             [license(License) || License <- Licenses]
     end;
 component_field(sha256 = Field, RawComponent) ->
     case proplists:get_value(Field, RawComponent) of
         undefined ->
-            undefined;
+            [];
         Hash ->
             [#{alg => "SHA-256", hash => binary:bin_to_list(Hash)}]
     end;
 component_field(external_references = Field, RawComponent) ->
     case proplists:get_value(Field, RawComponent) of
         undefined ->
-            undefined;
+            [];
         [] ->
-            undefined;
+            [];
         References ->
             [#{type => Type, url => Url} || {Type, Url} <- References]
     end;
