@@ -137,7 +137,8 @@ timestamp_test(Config) ->
     ?assertNotEqual(nomatch, re:run(Timestamp, ?RFC3339_REGEX)),
     timer:sleep(1000), % Make sure that TS is different
     SysTimeNow = erlang:system_time(second),
-    TsSysTime = calendar:rfc3339_to_system_time(Timestamp),
+    StringTS = binary_to_list(Timestamp),
+    TsSysTime = calendar:rfc3339_to_system_time(StringTS),
     ?assert(TsSysTime < SysTimeNow).
 
 tools_test(Config) ->
