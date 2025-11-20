@@ -3,6 +3,7 @@
 -define(DEFAULT_VERSION, 1).
 -define(PROVIDER, sbom).
 -define(DEPS, [lock]).
+-define(SPEC_VERSION, <<"1.6">>).
 
 
 -record(component, {
