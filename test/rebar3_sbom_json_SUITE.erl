@@ -172,21 +172,21 @@ component_test(Config) ->
     #{<<"component">> := Component} = ?config(metadata, Config),
     check_component_constraints(Component),
     #{<<"type">> := Type, <<"name">> := Name, <<"version">> := Version,
-      <<"isExternal">> := IsExternal, <<"description">> := Description,
-      <<"licences">> := [License], <<"purl">> := Purl} = Component,
+      <<"description">> := Description, <<"licenses">> := [License],
+      <<"purl">> := Purl} = Component,
     ?assertEqual(<<"application">>, Type, "metadata.component.type"),
     ?assertEqual(<<"basic_app">>, Name, "metadata.component.name"),
     ?assertEqual(<<"0.1.0">>, Version, "metadata.component.version"),
-    ?assertEqual(<<"false">>, IsExternal, "metadata.component.isExternal"),
     ?assertEqual(<<"An OTP application">>, Description,
                  "metadata.component.description"),
     % We don't check the hashes for now because it's not properly handled yet
     % A tarball will be required to generate an hash. Without it, we will skip
     % check_hashes_constraints(Hashes),
-    ?assertMatch(#{<<"id">> := "Apache-2.0"}, License,
-                 "metadata.component.licenses[0].id"),
+    ?assertMatch(#{<<"license">> := #{<<"id">> := <<"Apache-2.0">>}}, License,
+                 "metadata.component.licenses[0].license.id"),
     check_purl_format(Purl),
-    ?assertEqual(<<"pkg:generic/basic_app@0.1.0">>, Purl).
+    ?assertEqual(<<"pkg:hex/basic_app@0.1.0">>, Purl,
+                 "metadata.component.purl").
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -253,7 +253,9 @@ check_component_cyclonedx_constraints(Component) ->
             ct:fail("author field is deprecated");
         #{<<"modified">> := _} ->
             ct:fail("modified field is deprecated");
-        #{<<"type">> := _, <<"name">> := _} ->
+        #{<<"type">> := Type, <<"name">> := _} ->
+            ?assert(Type =/= <<"data">> orelse maps:is_key(<<"data">>, Component),
+                    "If component.type is 'data', then component.data must be present"),
             ok;
         _ ->
             ct:fail("Missing required field 'type' and/or 'name'")
@@ -264,21 +266,17 @@ check_component_cyclonedx_constraints(Component) ->
 check_component_ort_constraints(Component) ->
     ?assert(maps:is_key(<<"bom-ref">>, Component),
            "Component bom-ref is missing"),
-    #{<<"type">> := Type, <<"bom-ref">> := BomRef} = Component,
+    #{<<"bom-ref">> := BomRef} = Component,
     ?assertMatch([_ | _], binary_to_list(BomRef)),
     ?assert(maps:is_key(<<"version">>, Component) orelse
             maps:is_key(<<"versionRange">>, Component),
             "Component version or version range is missing"),
-    ?assert(maps:is_key(<<"isExternal">>, Component),
-            "Component isExternal field is missing"),
     ?assert(maps:is_key(<<"description">>, Component),
             "Component description is missing"),
     ?assert(maps:is_key(<<"licenses">>, Component),
             "Component licenses are required"),
     ?assert(maps:is_key(<<"purl">>, Component),
-            "Component purl is missing"),
-    ?assert(Type =/= <<"data">> orelse maps:is_key(<<"data">>, Component),
-            "If component.type is 'data', then component.data must be present").
+            "Component purl is missing").
 
 check_bom_ref_format(Component) ->
     #{<<"bom-ref">> := BomRef} = Component,
