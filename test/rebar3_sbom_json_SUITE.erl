@@ -211,8 +211,8 @@ timestamp_increases_test(Config) ->
     #{<<"timestamp">> := OldTs} = OldMetaData,
     #{<<"metadata">> := NewMetadata} = ?config(new_sbom_json, Config),
     #{<<"timestamp">> := NewTs} = NewMetadata,
-    OldSysTime = calendar:rfc3339_to_system_time(OldTs),
-    NewSysTime = calendar:rfc3339_to_system_time(NewTs),
+    OldSysTime = calendar:rfc3339_to_system_time(binary_to_list(OldTs)),
+    NewSysTime = calendar:rfc3339_to_system_time(binary_to_list(NewTs)),
     ?assert( OldSysTime < NewSysTime).
 
 %--- Private -------------------------------------------------------------------
