@@ -34,7 +34,8 @@ sbom_to_json(#sbom{metadata = Metadata} = SBoM) ->
         metadata => #{
             timestamp => bin(Metadata#metadata.timestamp),
             tools => [#{name => bin(T)} || T <- Metadata#metadata.tools],
-            component => component_to_json(Metadata#metadata.component)
+            component => component_to_json(Metadata#metadata.component),
+            authors => authors_to_json(Metadata#metadata.authors)
         },
         components => [component_to_json(C) || C <- SBoM#sbom.components],
         dependencies => [dependency_to_json(D) || D <- SBoM#sbom.dependencies]
@@ -57,10 +58,12 @@ component_to_json(C) ->
 prune_content(Component) ->
     maps:filter(fun(_, Value) -> Value =/= undefined end, Component).
 
+-spec authors_to_json([#individual{}]) -> [#{name => binary()}].
 authors_to_json(Authors) ->
     [author_to_json(A) || A <- Authors].
 
-author_to_json(#{name := Name}) ->
+-spec author_to_json(#individual{}) -> #{name => binary()}.
+author_to_json(#individual{name = Name}) ->
     #{name => bin(Name)}.
 
 hashes_to_json(Hashes) ->

@@ -25,9 +25,12 @@ The following command line options are supported:
                   [default: false]
     -V, --strict_version modify the version number of the bom only when the content changes
                   [default: true]
+    -a  --author  the author of the SBOM
 
 By default only dependencies in the 'default' profile are included. To
 generate an SBoM covering development environments specify the relevant
 profiles using 'as':
 
     $ rebar3 as default,test,docs sbom -o dev_bom.xml
+
+When no sbom author is specified, the plugin will fallback on the environment variable GITHUB_ACTOR. If that variable isn't set, the plugin will use the same value as for metadata.component.authors.

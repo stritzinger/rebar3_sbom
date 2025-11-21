@@ -19,7 +19,8 @@ init(State) ->
               {format, $F, "format", {string, "xml"}, "file format, [xml|json]"},
               {output, $o, "output", {string, ?DEFAULT_OUTPUT}, "the full path to the SBoM output file"},
               {force, $f, "force", {boolean, false}, "overwite existing files without prompting for confirmation"},
-              {strict_version, $V, "strict_version", {boolean, true}, "modify the version number of the bom only when the content changes"}
+              {strict_version, $V, "strict_version", {boolean, true}, "modify the version number of the bom only when the content changes"},
+              {author, $a, "author", string, "the author of the SBoM"}
             ]},
             {short_desc, "Generates CycloneDX SBoM"},
             {desc, "Generates a Software Bill-of-Materials (SBoM) in CycloneDX format"}
@@ -33,13 +34,14 @@ do(State) ->
     Output = proplists:get_value(output, Args),
     Force = proplists:get_value(force, Args),
     IsStrictVersion = proplists:get_value(strict_version, Args),
+    Author = proplists:get_value(author, Args),
     [App0 | _] = rebar_state:project_apps(State),
     App = rebar_app_info:source(App0, root_app),
 
     FilePath = filepath(Output, Format),
     DepsInfo = [dep_info(Dep) || Dep <- rebar_state:all_deps(State)],
     AppInfo = dep_info(App),
-    SBoM = rebar3_sbom_cyclonedx:bom({FilePath, Format}, IsStrictVersion, AppInfo, DepsInfo),
+    SBoM = rebar3_sbom_cyclonedx:bom({FilePath, Format}, IsStrictVersion, AppInfo, DepsInfo, Author),
     Contents = case Format of
         "xml" -> rebar3_sbom_xml:encode(SBoM);
         "json" -> rebar3_sbom_json:encode(SBoM)
@@ -74,7 +76,7 @@ dep_info(Dep) ->
     Licenses = lists:usort(Licenses0 ++ HexMetadataLicenses),
     Common =
         [
-         {authors, proplists:get_value(maintainers, Details)},
+         {authors, proplists:get_value(maintainers, Details, [])},
          {description, proplists:get_value(description, Details)},
          {licenses, Licenses},
          {external_references, ExternalReferences},

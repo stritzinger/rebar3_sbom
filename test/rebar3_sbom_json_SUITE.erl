@@ -10,10 +10,13 @@
 -export([required_fields_test/1]).
 -export([serial_number_test/1]).
 -export([version_test/1]).
+-export([github_actor_test/1]).
+-export([default_author_test/1]).
 
 % metadata group test cases
 -export([timestamp_test/1]).
 -export([tools_test/1]).
+-export([metadata_authors_test/1]).
 -export([licenses_test/1]).
 -export([component_test/1]).
 
@@ -56,9 +59,12 @@ groups() -> [{basic_app, [], [required_fields_test,
                               serial_number_test,
                               version_test,
                               {group, metadata},
-                              {group, basic_app_with_sbom}]},
+                              {group, basic_app_with_sbom},
+                              github_actor_test,
+                              default_author_test]},
              {metadata, [], [timestamp_test,
-                             tools_test, % TODO maybe add author test
+                             % tools_test,
+                             metadata_authors_test,
                              licenses_test,
                              component_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
@@ -79,7 +85,7 @@ init_per_group(basic_app, Config) ->
     State = init_rebar_state(Config),
     PrivDir = ?config(priv_dir, Config),
     SBoMPath = filename:join(PrivDir, "bom.json"),
-    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false"],
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-a", "Jane Doe"],
     {ok, _FinalState} = rebar3:run(State, Cmd),
     {ok, File} = file:read_file(SBoMPath),
     SBoMJSON = json:decode(File),
@@ -103,6 +109,24 @@ init_per_group(_, Config) ->
 end_per_group(_, _Config) ->
     ok.
 
+init_per_testcase(github_actor_test, Config) ->
+    os:putenv("GITHUB_ACTOR", "Bilbo Baggins"),
+    State = init_rebar_state(Config),
+    SBoMPath = ?config(sbom_path, Config),
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
+    {ok, _FinalState} = rebar3:run(State, Cmd),
+    {ok, File} = file:read_file(SBoMPath),
+    NewSBoMJSON = json:decode(File),
+    [{sbom_json, NewSBoMJSON} | Config];
+init_per_testcase(default_author_test, Config) ->
+    os:unsetenv("GITHUB_ACTOR"),
+    State = init_rebar_state(Config),
+    SBoMPath = ?config(sbom_path, Config),
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
+    {ok, _FinalState} = rebar3:run(State, Cmd),
+    {ok, File} = file:read_file(SBoMPath),
+    NewSBoMJSON = json:decode(File),
+    [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(_, Config) ->
     Config.
 
@@ -128,6 +152,18 @@ version_test(Config) ->
     #{<<"version">> := Version} = SBoMJSON,
     % Since the app doesn't have a sbom version should be 1
     ?assertEqual(1, Version).
+
+github_actor_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := Metadata} = SBoMJSON,
+    #{<<"authors">> := Authors} = Metadata,
+    ?assertMatch([#{<<"name">> := <<"Bilbo Baggins">>}], Authors).
+
+default_author_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := Metadata} = SBoMJSON,
+    #{<<"authors">> := Authors} = Metadata,
+    ?assertMatch([#{<<"name">> := <<"John Doe">>}], Authors).
 
 %--- metadata group ---
 timestamp_test(Config) ->
@@ -161,6 +197,12 @@ tools_test(Config) ->
     check_purl_format(Purl),
     ?assertMatch(<<"pkg:hex/rebar3_sbom", _/bitstring>>, Purl),
     ?assertMatch(#{<<"license">> := #{<<"id">> := <<"Apache-2.0">>}}, License).
+
+metadata_authors_test(Config) ->
+    #{<<"authors">> := Authors} = ?config(metadata, Config),
+    ?assertMatch([_], Authors),
+    [Author] = Authors,
+    ?assertMatch(#{<<"name">> := <<"Jane Doe">>}, Author).
 
 licenses_test(Config) ->
     Metadata = ?config(metadata, Config),

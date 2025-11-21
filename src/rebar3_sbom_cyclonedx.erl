@@ -1,17 +1,17 @@
 -module(rebar3_sbom_cyclonedx).
 
--export([bom/4, bom/5, uuid/0]).
+-export([bom/5, bom/6, uuid/0]).
 
 -include("rebar3_sbom.hrl").
 
-bom(FileInfo, IsStrictVersion, AppInfo, RawComponents) ->
-    bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, uuid()).
+bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, Author) ->
+    bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, uuid(), Author).
 
-bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial) ->
+bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial, Author) ->
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
     SBoM = #sbom{
         serial = Serial,
-        metadata = metadata(AppInfo),
+        metadata = metadata(AppInfo, Author),
         components = components(ValidRawComponents),
         dependencies = [dependency(AppInfo) | dependencies(ValidRawComponents)]
     },
@@ -24,12 +24,31 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial) -
         SBoM
     end.
 
-metadata(App) ->
+-spec metadata(App, Author) -> Metadata when
+    App :: proplists:proplist(),
+    Author :: undefined | string(),
+    Metadata :: #metadata{}.
+metadata(App, Author) ->
     #metadata{
         timestamp = calendar:system_time_to_rfc3339(erlang:system_time(second)),
         tools = [?APP],
-        component = component(App)
+        component = component(App),
+        authors = sbom_authors(Author, App)
     }.
+
+-spec sbom_authors(Author, App) -> Authors when
+    Author :: undefined | string(),
+    App :: proplists:proplist(),
+    Authors :: [#individual{}].
+sbom_authors(undefined, App) ->
+    case os:getenv("GITHUB_ACTOR") of
+        false ->
+            authors(App);
+        Actor ->
+            [#individual{name = Actor}]
+    end;
+sbom_authors(Author, _App) ->
+    [#individual{name = Author}].
 
 components(RawComponents) ->
     [component(RawComponent) || RawComponent <- RawComponents].
@@ -38,7 +57,7 @@ component(RawComponent) ->
     #component{
         bom_ref = bom_ref_of_component(RawComponent),
         name = component_field(name, RawComponent),
-        authors = component_field(authors, RawComponent),
+        authors = authors(RawComponent),
         version = component_field(version, RawComponent),
         description = component_field(description, RawComponent),
         hashes = component_field(sha256, RawComponent),
@@ -47,13 +66,6 @@ component(RawComponent) ->
         purl = component_field(purl, RawComponent)
     }.
 
-component_field(authors = Field, RawComponent) ->
-    case proplists:get_value(Field, RawComponent) of
-        undefined ->
-            [];
-        Values ->
-            [#{name => V} || V <- Values]
-    end;
 component_field(licenses = Field, RawComponent) ->
     case proplists:get_value(Field, RawComponent) of
         undefined ->
@@ -92,6 +104,12 @@ license(Name) ->
         SpdxId ->
             #{id => SpdxId}
     end.
+
+-spec authors(App) -> Authors when
+    App :: proplists:proplist(),
+    Authors :: [#individual{}].
+authors(App) ->
+    [#individual{name = Name} || Name <- proplists:get_value(authors, App, [])].
 
 uuid() ->
     [A, B, C, D, E] = [crypto:strong_rand_bytes(Len) || Len <- [4, 2, 2, 2, 6]],

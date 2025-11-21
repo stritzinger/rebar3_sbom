@@ -43,10 +43,10 @@
 
 % Alias Author
 -record(individual, {
-    bom_ref :: bom_ref(),
+    bom_ref :: bom_ref() | undefined,
     name :: string(),
-    email :: string(),
-    phone :: string()
+    email :: string() | undefined,
+    phone :: string() | undefined
 }).
 
 -record(licensing, {
@@ -87,6 +87,8 @@
     timestamp :: string(),
     component :: #component{},
     tools = [] :: [string()],
+    manufacturer = undefined :: #organization{} | undefined,
+    authors = [] :: [#individual{}],
     properties = [] :: properties()
 }).
 
