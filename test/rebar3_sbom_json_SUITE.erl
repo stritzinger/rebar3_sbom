@@ -12,6 +12,8 @@
 -export([version_test/1]).
 -export([github_actor_test/1]).
 -export([default_author_test/1]).
+-export([no_sbom_manufacturer_test/1]).
+-export([no_sbom_licenses_test/1]).
 
 % metadata group test cases
 -export([timestamp_test/1]).
@@ -19,8 +21,9 @@
 -export([metadata_authors_test/1]).
 -export([licenses_test/1]).
 -export([component_test/1]).
+-export([manufacturer_test/1]).
 
-% basic app with sbom group test cases
+% basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
 -export([version_increment_test/1]).
 -export([timestamp_increases_test/1]).
@@ -61,12 +64,15 @@ groups() -> [{basic_app, [], [required_fields_test,
                               {group, metadata},
                               {group, basic_app_with_sbom},
                               github_actor_test,
-                              default_author_test]},
+                              default_author_test,
+                              no_sbom_manufacturer_test,
+                              no_sbom_licenses_test]},
              {metadata, [], [timestamp_test,
                              % tools_test,
                              metadata_authors_test,
                              licenses_test,
-                             component_test]},
+                             component_test,
+                             manufacturer_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -119,7 +125,6 @@ init_per_testcase(github_actor_test, Config) ->
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(default_author_test, Config) ->
-    os:unsetenv("GITHUB_ACTOR"),
     State = init_rebar_state(Config),
     SBoMPath = ?config(sbom_path, Config),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
@@ -127,9 +132,22 @@ init_per_testcase(default_author_test, Config) ->
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
+init_per_testcase(Testcase, Config)
+    when Testcase =:= no_sbom_manufacturer_test orelse
+         Testcase =:= no_sbom_licenses_test ->
+    State = init_rebar_state(Config),
+    State2 = rebar_state:set(State, rebar3_sbom, []),
+    SBoMPath = ?config(sbom_path, Config),
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
+    {ok, _FinalState} = rebar3:run(State2, Cmd),
+    {ok, File} = file:read_file(SBoMPath),
+    NewSBoMJSON = json:decode(File),
+    [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(_, Config) ->
     Config.
 
+end_per_testcase(github_actor_test, _) ->
+    os:unsetenv("GITHUB_ACTOR");
 end_per_testcase(_, _Config) ->
     ok.
 
@@ -150,7 +168,7 @@ serial_number_test(Config) ->
 version_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"version">> := Version} = SBoMJSON,
-    % Since the app doesn't have a sbom version should be 1
+    % Since the app doesn't have a SBoM version should be 1
     ?assertEqual(1, Version).
 
 github_actor_test(Config) ->
@@ -164,6 +182,18 @@ default_author_test(Config) ->
     #{<<"metadata">> := Metadata} = SBoMJSON,
     #{<<"authors">> := Authors} = Metadata,
     ?assertMatch([#{<<"name">> := <<"John Doe">>}], Authors).
+
+no_sbom_manufacturer_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := Metadata} = SBoMJSON,
+    ?assertNotMatch(#{<<"manufacturer">> := _}, Metadata).
+
+no_sbom_licenses_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    % Get component licenses and check if metadata.licences matches with them
+    #{<<"metadata">> := #{<<"licenses">> := MetadataLicenses,
+      <<"component">> := #{<<"licenses">> := ComponentLicenses}}} = SBoMJSON,
+    ?assertMatch(ComponentLicenses, MetadataLicenses).
 
 %--- metadata group ---
 timestamp_test(Config) ->
@@ -209,7 +239,7 @@ licenses_test(Config) ->
     ?assertMatch(#{<<"licenses">> := [_]}, Metadata,
                  "metadata.licenses is missing"),
     #{<<"licenses">> := [License]} = Metadata,
-    ?assertMatch(#{<<"license">> := #{<<"id">> := <<"Apache-2.0">>}}, License).
+    ?assertMatch(#{<<"license">> := #{<<"id">> := <<"BSD-3-Clause">>}}, License).
 
 component_test(Config) ->
     #{<<"component">> := Component} = ?config(metadata, Config),
@@ -230,6 +260,14 @@ component_test(Config) ->
     check_purl_format(Purl),
     ?assertEqual(<<"pkg:hex/basic_app@0.1.0">>, Purl,
                  "metadata.component.purl").
+
+manufacturer_test(Config) ->
+    #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),
+    ?assertMatch(#{<<"name">> := <<"The comunity of the Ring">>}, Manufacturer),
+    ?assertMatch(#{<<"address">> := <<"Bag End, Hobbiton, Shire">>}, Manufacturer),
+    ?assertNotMatch(#{<<"bom-ref">> := _}, Manufacturer),
+    ?assertNotMatch(#{<<"url">> := _}, Manufacturer),
+    ?assertNotMatch(#{<<"contact">> := _}, Manufacturer).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->

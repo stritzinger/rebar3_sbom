@@ -4,14 +4,14 @@
 
 -include("rebar3_sbom.hrl").
 
-bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, Author) ->
-    bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, uuid(), Author).
+bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, MetadataInfo) ->
+    bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, uuid(), MetadataInfo).
 
-bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial, Author) ->
+bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial, MetadataInfo) ->
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
     SBoM = #sbom{
         serial = Serial,
-        metadata = metadata(AppInfo, Author),
+        metadata = metadata(AppInfo, MetadataInfo),
         components = components(ValidRawComponents),
         dependencies = [dependency(AppInfo) | dependencies(ValidRawComponents)]
     },
@@ -24,16 +24,18 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial, A
         SBoM
     end.
 
--spec metadata(App, Author) -> Metadata when
+-spec metadata(App, MetadataInfo) -> Metadata when
     App :: proplists:proplist(),
-    Author :: undefined | string(),
+    MetadataInfo :: proplists:proplist(),
     Metadata :: #metadata{}.
-metadata(App, Author) ->
+metadata(App, MetadataInfo) ->
     #metadata{
         timestamp = calendar:system_time_to_rfc3339(erlang:system_time(second)),
         tools = [?APP],
+        manufacturer = manufacturer(proplists:get_value(manufacturer, MetadataInfo, undefined)),
+        authors = sbom_authors(proplists:get_value(author, MetadataInfo, undefined), App),
         component = component(App),
-        authors = sbom_authors(Author, App)
+        licenses = sbom_licenses(proplists:get_value(licenses, MetadataInfo, undefined), App)
     }.
 
 -spec sbom_authors(Author, App) -> Authors when
@@ -49,6 +51,15 @@ sbom_authors(undefined, App) ->
     end;
 sbom_authors(Author, _App) ->
     [#individual{name = Author}].
+
+-spec sbom_licenses(Licenses, App) -> Licenses when
+    Licenses :: undefined | [string()],
+    App :: proplists:proplist(),
+    Licenses :: [#license{}].
+sbom_licenses(undefined, App) ->
+    component_field(licenses, App);
+sbom_licenses(Licenses, _App) ->
+    [license(License) || License <- Licenses].
 
 components(RawComponents) ->
     [component(RawComponent) || RawComponent <- RawComponents].
@@ -104,6 +115,18 @@ license(Name) ->
         SpdxId ->
             #{id => SpdxId}
     end.
+
+-spec manufacturer(Manufacturer) -> Manufacturer when
+    Manufacturer :: undefined | map(),
+    Manufacturer :: #organization{} | undefined.
+manufacturer(undefined) ->
+    undefined;
+manufacturer(Manufacturer) ->
+    #organization{name = maps:get(name, Manufacturer, undefined),
+                  address = maps:get(address, Manufacturer, undefined),
+                  url = maps:get(url, Manufacturer, undefined),
+                  contact = maps:get(contact, Manufacturer, undefined)
+}.
 
 -spec authors(App) -> Authors when
     App :: proplists:proplist(),

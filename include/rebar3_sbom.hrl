@@ -34,10 +34,10 @@
 
 % Alias Manufacturer object
 -record(organization, {
-    bom_ref :: bom_ref(),
-    name :: string(),
+    bom_ref :: bom_ref() | undefined,
+    name :: string() | undefined,
     address :: #address{} | undefined,
-    url :: string(),
+    url :: string() | undefined,
     contact :: #contact{} | undefined
 }).
 
@@ -52,8 +52,8 @@
 -record(licensing, {
     alt_id :: string(),
     licensor :: #organization{} | #individual{},
-    licensee :: #organization{} | #individual{},
-    purchaser :: #organization{} | #individual{},
+    licensee :: #organization{} | #individual{},
+    purchaser :: #organization{} | #individual{},
     purchase_order :: string(),
     licenses_types :: string(),
     last_renewal :: calendar:datetime(),
@@ -89,6 +89,7 @@
     tools = [] :: [string()],
     manufacturer = undefined :: #organization{} | undefined,
     authors = [] :: [#individual{}],
+    licenses = [] :: [#license{}],
     properties = [] :: properties()
 }).
 

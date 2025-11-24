@@ -31,12 +31,7 @@ sbom_to_json(#sbom{metadata = Metadata} = SBoM) ->
         specVersion => ?SPEC_VERSION,
         serialNumber => bin(SBoM#sbom.serial),
         version => SBoM#sbom.version,
-        metadata => #{
-            timestamp => bin(Metadata#metadata.timestamp),
-            tools => [#{name => bin(T)} || T <- Metadata#metadata.tools],
-            component => component_to_json(Metadata#metadata.component),
-            authors => authors_to_json(Metadata#metadata.authors)
-        },
+        metadata => metadata_to_json(Metadata),
         components => [component_to_json(C) || C <- SBoM#sbom.components],
         dependencies => [dependency_to_json(D) || D <- SBoM#sbom.dependencies]
     }.
@@ -65,6 +60,28 @@ authors_to_json(Authors) ->
 -spec author_to_json(#individual{}) -> #{name => binary()}.
 author_to_json(#individual{name = Name}) ->
     #{name => bin(Name)}.
+
+-spec metadata_to_json(#metadata{}) -> map().
+metadata_to_json(Metadata) ->
+    prune_content(#{
+        timestamp => bin(Metadata#metadata.timestamp),
+        tools => [#{name => bin(T)} || T <- Metadata#metadata.tools],
+        component => component_to_json(Metadata#metadata.component),
+        manufacturer => manufacturer_to_json(Metadata#metadata.manufacturer),
+        authors => authors_to_json(Metadata#metadata.authors),
+        licenses => licenses_to_json(Metadata#metadata.licenses)
+    }).
+
+-spec manufacturer_to_json(#organization{} | undefined) -> map() | undefined.
+manufacturer_to_json(undefined) ->
+    undefined;
+manufacturer_to_json(Manufacturer) ->
+    prune_content(#{
+        name => bin(Manufacturer#organization.name),
+        address => bin(Manufacturer#organization.address),
+        url => bin(Manufacturer#organization.url),
+        contact => bin(Manufacturer#organization.contact)
+    }).
 
 hashes_to_json(Hashes) ->
     [hash_to_json(H) || H <- Hashes].
