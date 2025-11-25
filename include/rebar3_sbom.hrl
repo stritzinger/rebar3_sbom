@@ -24,13 +24,13 @@
 }).
 
 -record(address, {
-    bom_ref :: bom_ref(),
-    country :: string(),
-    region :: string(),
-    locality :: string(),
-    post_office_box_number :: string(),
-    postal_code :: string(),
-    street_address :: string()
+    bom_ref :: bom_ref() | undefined,
+    country :: string() | undefined,
+    region :: string() | undefined,
+    locality :: string() | undefined,
+    post_office_box_number :: string() | undefined,
+    postal_code :: string() | undefined,
+    street_address :: string() | undefined
 }).
 
 % Alias Manufacturer object
@@ -39,7 +39,7 @@
     name :: string() | undefined,
     address :: #address{} | undefined,
     url :: string() | undefined,
-    contact :: #individual{} | undefined
+    contact = [] :: [#individual{}]
 }).
 
 % Not adding Text, URL, Licensing for now
