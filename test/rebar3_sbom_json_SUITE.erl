@@ -271,10 +271,14 @@ manufacturer_test(Config) ->
                    <<"locality">> := <<"Hobbiton">>,
                    <<"postal_code">> := <<"12345">>,
                    <<"street_address">> := <<"Bag End, Hobbiton, Shire">>}, Address),
+    ?assertMatch(#{<<"contact">> := [_ | _]}, Manufacturer),
+    #{<<"contact">> := [Contact1, Contact2]} = Manufacturer,
+    ?assertEqual(#{<<"name">> => <<"Frodo Baggins">>}, Contact1),
+    ?assertEqual(#{<<"name">> => <<"Gandalf the Grey">>,
+                   <<"phone">> => <<"1234567890">>}, Contact2),
     ?assertNotMatch(#{<<"post_office_box_number">> := _}, Address),
     ?assertNotMatch(#{<<"bom-ref">> := _}, Manufacturer),
-    ?assertNotMatch(#{<<"url">> := _}, Manufacturer),
-    ?assertNotMatch(#{<<"contact">> := _}, Manufacturer).
+    ?assertNotMatch(#{<<"url">> := _}, Manufacturer).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->

@@ -40,7 +40,7 @@ component_to_json(C) ->
     prune_content(#{
         type => bin(C#component.type),
         'bom-ref' => bin(C#component.bom_ref),
-        authors => authors_to_json(C#component.authors),
+        authors => individuals_to_json(C#component.authors),
         name => bin(C#component.name),
         version => bin(C#component.version),
         description => bin(C#component.description),
@@ -53,13 +53,15 @@ component_to_json(C) ->
 prune_content(Component) ->
     maps:filter(fun(_, Value) -> Value =/= undefined end, Component).
 
--spec authors_to_json([#individual{}]) -> [#{name => binary()}].
-authors_to_json(Authors) ->
-    [author_to_json(A) || A <- Authors].
+-spec individuals_to_json([#individual{}]) -> [#{name => binary()}].
+individuals_to_json(Individuals) ->
+    [individual_to_json(I) || I <- Individuals].
 
--spec author_to_json(#individual{}) -> #{name => binary()}.
-author_to_json(#individual{name = Name}) ->
-    #{name => bin(Name)}.
+-spec individual_to_json(#individual{}) -> #{name => binary()}.
+individual_to_json(Individual) ->
+    prune_content(#{name => bin(Individual#individual.name),
+                    email => bin(Individual#individual.email),
+                    phone => bin(Individual#individual.phone)}).
 
 -spec metadata_to_json(#metadata{}) -> map().
 metadata_to_json(Metadata) ->
@@ -68,7 +70,7 @@ metadata_to_json(Metadata) ->
         tools => [#{name => bin(T)} || T <- Metadata#metadata.tools],
         component => component_to_json(Metadata#metadata.component),
         manufacturer => manufacturer_to_json(Metadata#metadata.manufacturer),
-        authors => authors_to_json(Metadata#metadata.authors),
+        authors => individuals_to_json(Metadata#metadata.authors),
         licenses => licenses_to_json(Metadata#metadata.licenses)
     }).
 
@@ -80,7 +82,7 @@ manufacturer_to_json(Manufacturer) ->
         name => bin(Manufacturer#organization.name),
         address => address_to_json(Manufacturer#organization.address),
         url => bin(Manufacturer#organization.url),
-        contact => bin(Manufacturer#organization.contact)
+        contact => individuals_to_json(Manufacturer#organization.contact)
     }).
 
 -spec address_to_json(#address{}) -> map().

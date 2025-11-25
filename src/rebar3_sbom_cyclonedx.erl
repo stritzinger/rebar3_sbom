@@ -125,7 +125,7 @@ manufacturer(Manufacturer) ->
     #organization{name = maps:get(name, Manufacturer, undefined),
                   address = address(maps:get(address, Manufacturer, undefined)),
                   url = maps:get(url, Manufacturer, undefined),
-                  contact = maps:get(contact, Manufacturer, undefined)
+                  contact = individuals(maps:get(contact, Manufacturer, undefined))
 }.
 
 -spec address(undefined | map()) -> undefined | #address{}.
@@ -140,6 +140,18 @@ address(AddressMap) ->
         postal_code = maps:get(postal_code, AddressMap, undefined),
         street_address = maps:get(street_address, AddressMap, undefined)
     }.
+
+-spec individuals(Individuals) -> Individuals when
+    Individuals :: [string()],
+    Individuals :: [#individual{}].
+individuals(undefined) ->
+    [];
+individuals(Individuals) ->
+    lists:map(fun(Individual) ->
+        #individual{name = maps:get(name, Individual, undefined),
+                    email = maps:get(email, Individual, undefined),
+                    phone = maps:get(phone, Individual, undefined)}
+    end, Individuals).
 
 -spec authors(App) -> Authors when
     App :: proplists:proplist(),

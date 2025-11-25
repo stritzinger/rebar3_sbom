@@ -18,7 +18,7 @@
 % Alias Author, Contact
 -record(individual, {
     bom_ref :: bom_ref() | undefined,
-    name :: string(),
+    name :: string() | undefined,
     email :: string() | undefined,
     phone :: string() | undefined
 }).
