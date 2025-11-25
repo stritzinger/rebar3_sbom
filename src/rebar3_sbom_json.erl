@@ -78,9 +78,20 @@ manufacturer_to_json(undefined) ->
 manufacturer_to_json(Manufacturer) ->
     prune_content(#{
         name => bin(Manufacturer#organization.name),
-        address => bin(Manufacturer#organization.address),
+        address => address_to_json(Manufacturer#organization.address),
         url => bin(Manufacturer#organization.url),
         contact => bin(Manufacturer#organization.contact)
+    }).
+
+-spec address_to_json(#address{}) -> map().
+address_to_json(Address) ->
+    prune_content(#{
+        country => bin(Address#address.country),
+        region => bin(Address#address.region),
+        locality => bin(Address#address.locality),
+        post_office_box_number => bin(Address#address.post_office_box_number),
+        postal_code => bin(Address#address.postal_code),
+        street_address => bin(Address#address.street_address)
     }).
 
 hashes_to_json(Hashes) ->

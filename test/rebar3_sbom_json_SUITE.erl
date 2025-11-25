@@ -264,7 +264,14 @@ component_test(Config) ->
 manufacturer_test(Config) ->
     #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),
     ?assertMatch(#{<<"name">> := <<"The comunity of the Ring">>}, Manufacturer),
-    ?assertMatch(#{<<"address">> := <<"Bag End, Hobbiton, Shire">>}, Manufacturer),
+    ?assertMatch(#{<<"address">> := _}, Manufacturer),
+    #{<<"address">> := Address} = Manufacturer,
+    ?assertMatch(#{<<"country">> := <<"Middle-earth">>,
+                   <<"region">> := <<"Shire">>,
+                   <<"locality">> := <<"Hobbiton">>,
+                   <<"postal_code">> := <<"12345">>,
+                   <<"street_address">> := <<"Bag End, Hobbiton, Shire">>}, Address),
+    ?assertNotMatch(#{<<"post_office_box_number">> := _}, Address),
     ?assertNotMatch(#{<<"bom-ref">> := _}, Manufacturer),
     ?assertNotMatch(#{<<"url">> := _}, Manufacturer),
     ?assertNotMatch(#{<<"contact">> := _}, Manufacturer).

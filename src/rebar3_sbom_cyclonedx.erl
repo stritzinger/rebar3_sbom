@@ -123,10 +123,23 @@ manufacturer(undefined) ->
     undefined;
 manufacturer(Manufacturer) ->
     #organization{name = maps:get(name, Manufacturer, undefined),
-                  address = maps:get(address, Manufacturer, undefined),
+                  address = address(maps:get(address, Manufacturer, undefined)),
                   url = maps:get(url, Manufacturer, undefined),
                   contact = maps:get(contact, Manufacturer, undefined)
 }.
+
+-spec address(undefined | map()) -> undefined | #address{}.
+address(undefined) ->
+    undefined;
+address(AddressMap) ->
+    #address{
+        country = maps:get(country, AddressMap, undefined),
+        region = maps:get(region, AddressMap, undefined),
+        locality = maps:get(locality, AddressMap, undefined),
+        post_office_box_number = maps:get(post_office_box_number, AddressMap, undefined),
+        postal_code = maps:get(postal_code, AddressMap, undefined),
+        street_address = maps:get(street_address, AddressMap, undefined)
+    }.
 
 -spec authors(App) -> Authors when
     App :: proplists:proplist(),
