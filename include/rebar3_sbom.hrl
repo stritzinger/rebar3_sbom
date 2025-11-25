@@ -15,6 +15,14 @@
 
 %--- Records -------------------------------------------------------------------
 
+% Alias Author, Contact
+-record(individual, {
+    bom_ref :: bom_ref() | undefined,
+    name :: string(),
+    email :: string() | undefined,
+    phone :: string() | undefined
+}).
+
 -record(address, {
     bom_ref :: bom_ref(),
     country :: string(),
@@ -25,48 +33,21 @@
     street_address :: string()
 }).
 
--record(contact, {
-    bom_ref :: bom_ref(),
-    name :: string(),
-    email :: string(),
-    phone :: string()
- }).
-
 % Alias Manufacturer object
 -record(organization, {
     bom_ref :: bom_ref() | undefined,
     name :: string() | undefined,
     address :: #address{} | undefined,
     url :: string() | undefined,
-    contact :: #contact{} | undefined
+    contact :: #individual{} | undefined
 }).
 
-% Alias Author
--record(individual, {
-    bom_ref :: bom_ref() | undefined,
-    name :: string(),
-    email :: string() | undefined,
-    phone :: string() | undefined
-}).
-
--record(licensing, {
-    alt_id :: string(),
-    licensor :: #organization{} | #individual{},
-    licensee :: #organization{} | #individual{},
-    purchaser :: #organization{} | #individual{},
-    purchase_order :: string(),
-    licenses_types :: string(),
-    last_renewal :: calendar:datetime(),
-    expiration :: calendar:datetime()
-}).
-
-% Not adding Text or URL for now
+% Not adding Text, URL, Licensing for now
 -record(license, {
     bom_ref :: bom_ref(),
     id :: spdx_licence_id(),
     name :: string(),
-    acknowledgement :: string(), % Either "declared" or "concluded",
-    licensing :: #licensing{} | undefined,
+    acknowledgement :: declared | concluded,
     properties = [] :: properties()
 }).
 
