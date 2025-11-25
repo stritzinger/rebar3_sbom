@@ -28,6 +28,7 @@
 % components group test cases
 -export([required_component_fields_test/1]).
 -export([scope_test/1]).
+-export([component_hashes_test/1]).
 
 % basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
@@ -82,7 +83,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                              component_test,
                              manufacturer_test]},
              {components, [], [required_component_fields_test,
-                               scope_test]},
+                               scope_test,
+                               component_hashes_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -342,6 +344,14 @@ scope_test(Config) ->
         #{<<"scope">> := Scope} = Component,
         ?assertEqual(<<"required">>, Scope)
     end, Components).
+
+component_hashes_test(Config) ->
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    lists:foreach(fun(Component) ->
+        #{<<"hashes">> := Hashes} = Component,
+        check_hashes_constraints(Hashes)
+    end, Components).
+
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
     OldSBoMJSON = ?config(sbom_json, Config),
@@ -416,7 +426,6 @@ check_component_cyclonedx_constraints(Component) ->
     end.
 
 % These are the constraints that we impose for ORT
-% Hashes might be needed but we also need to cover a few edge cases
 check_component_ort_constraints(Component) ->
     ?assert(maps:is_key(<<"bom-ref">>, Component),
            "Component bom-ref is missing"),
@@ -432,7 +441,9 @@ check_component_ort_constraints(Component) ->
     ?assert(maps:is_key(<<"purl">>, Component),
             "Component purl is missing"),
     ?assert(maps:is_key(<<"scope">>, Component),
-            "Component scope is missing").
+            "Component scope is missing"),
+    ?assert(maps:is_key(<<"hashes">>, Component),
+            "Component hashes are missing").
 
 check_bom_ref_format(Component) ->
     #{<<"bom-ref">> := BomRef} = Component,
