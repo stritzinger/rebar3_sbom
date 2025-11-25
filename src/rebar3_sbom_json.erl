@@ -44,6 +44,7 @@ component_to_json(C) ->
         name => bin(C#component.name),
         version => bin(C#component.version),
         description => bin(C#component.description),
+        scope => bin(C#component.scope),
         hashes => hashes_to_json(C#component.hashes),
         licenses => licenses_to_json(C#component.licenses),
         externalReferences => external_references_to_json(C#component.externalReferences),
