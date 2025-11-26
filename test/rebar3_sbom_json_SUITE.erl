@@ -15,6 +15,7 @@
 -export([no_sbom_manufacturer_test/1]).
 -export([no_sbom_licenses_test/1]).
 -export([empty_manufacturer_url_test/1]).
+-export([manufacturer_empty_url_array_test/1]).
 
 % metadata group test cases
 -export([timestamp_test/1]).
@@ -158,6 +159,19 @@ init_per_testcase(empty_manufacturer_url_test, Config) ->
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
+init_per_testcase(manufacturer_empty_url_array_test, Config) ->
+    State = init_rebar_state(Config),
+    PluginOpts = rebar_state:get(State, rebar3_sbom),
+    Manufacturer = proplists:get_value(sbom_manufacturer, PluginOpts),
+    NewPluginOpts = lists:keyreplace(sbom_manufacturer, 1, PluginOpts,
+                                     {sbom_manufacturer, Manufacturer#{url => []}}),
+    State2 = rebar_state:set(State, rebar3_sbom, NewPluginOpts),
+    SBoMPath = ?config(sbom_path, Config),
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
+    {ok, _FinalState} = rebar3:run(State2, Cmd),
+    {ok, File} = file:read_file(SBoMPath),
+    NewSBoMJSON = json:decode(File),
+    [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(_, Config) ->
     Config.
 
@@ -211,6 +225,11 @@ no_sbom_licenses_test(Config) ->
     ?assertMatch(ComponentLicenses, MetadataLicenses).
 
 empty_manufacturer_url_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := #{<<"manufacturer">> := Manufacturer}} = SBoMJSON,
+    ?assertNotMatch(#{<<"url">> := _}, Manufacturer).
+
+manufacturer_empty_url_array_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"metadata">> := #{<<"manufacturer">> := Manufacturer}} = SBoMJSON,
     ?assertNotMatch(#{<<"url">> := _}, Manufacturer).
