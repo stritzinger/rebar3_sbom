@@ -29,6 +29,7 @@
 -export([required_component_fields_test/1]).
 -export([scope_test/1]).
 -export([component_hashes_test/1]).
+-export([component_licenses_test/1]).
 
 % basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
@@ -84,7 +85,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                              manufacturer_test]},
              {components, [], [required_component_fields_test,
                                scope_test,
-                               component_hashes_test]},
+                               component_hashes_test,
+                               component_licenses_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -352,6 +354,15 @@ component_hashes_test(Config) ->
         check_hashes_constraints(Hashes)
     end, Components).
 
+component_licenses_test(Config) ->
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    lists:foreach(fun(Component) ->
+        #{<<"licenses">> := Licenses} = Component,
+        % All deps of basic_app have at least one license
+        ?assertNotMatch([], Licenses),
+        check_licenses_constraints(Licenses)
+    end, Components).
+
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
     OldSBoMJSON = ?config(sbom_json, Config),
@@ -460,3 +471,8 @@ check_hashes_constraints(Hashes) ->
 
 check_purl_format(Purl) ->
     ?assertNotEqual(nomatch, re:run(Purl, ?PURL_REGEX)).
+
+check_licenses_constraints(Licenses) ->
+    lists:foreach(fun(License) ->
+        ?assertMatch(#{<<"license">> := #{<<"id">> := _}}, License)
+    end, Licenses).
