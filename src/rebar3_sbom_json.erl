@@ -97,7 +97,7 @@ address_to_json(Address) ->
     }).
 
 -spec urls_to_json([string()]) -> [string()].
-urls_to_json(undefined) ->
+urls_to_json([]) ->
     undefined;
 urls_to_json(Urls) ->
     [bin(Url) || Url <- Urls].

@@ -124,7 +124,7 @@ manufacturer(undefined) ->
 manufacturer(Manufacturer) ->
     #organization{name = maps:get(name, Manufacturer, undefined),
                   address = address(maps:get(address, Manufacturer, undefined)),
-                  url = maps:get(url, Manufacturer, undefined),
+                  url = maps:get(url, Manufacturer, []),
                   contact = individuals(maps:get(contact, Manufacturer, undefined))
 }.
 
