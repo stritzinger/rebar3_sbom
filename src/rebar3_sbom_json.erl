@@ -31,11 +31,7 @@ sbom_to_json(#sbom{metadata = Metadata} = SBoM) ->
         specVersion => ?SPEC_VERSION,
         serialNumber => bin(SBoM#sbom.serial),
         version => SBoM#sbom.version,
-        metadata => #{
-            timestamp => bin(Metadata#metadata.timestamp),
-            tools => [#{name => bin(T)} || T <- Metadata#metadata.tools],
-            component => component_to_json(Metadata#metadata.component)
-        },
+        metadata => metadata_to_json(Metadata),
         components => [component_to_json(C) || C <- SBoM#sbom.components],
         dependencies => [dependency_to_json(D) || D <- SBoM#sbom.dependencies]
     }.
@@ -44,7 +40,7 @@ component_to_json(C) ->
     prune_content(#{
         type => bin(C#component.type),
         'bom-ref' => bin(C#component.bom_ref),
-        authors => authors_to_json(C#component.authors),
+        authors => individuals_to_json(C#component.authors),
         name => bin(C#component.name),
         version => bin(C#component.version),
         description => bin(C#component.description),
@@ -57,11 +53,54 @@ component_to_json(C) ->
 prune_content(Component) ->
     maps:filter(fun(_, Value) -> Value =/= undefined end, Component).
 
-authors_to_json(Authors) ->
-    [author_to_json(A) || A <- Authors].
+-spec individuals_to_json([#individual{}]) -> [#{name => binary()}].
+individuals_to_json(Individuals) ->
+    [individual_to_json(I) || I <- Individuals].
 
-author_to_json(#{name := Name}) ->
-    #{name => bin(Name)}.
+-spec individual_to_json(#individual{}) -> #{name => binary()}.
+individual_to_json(Individual) ->
+    prune_content(#{name => bin(Individual#individual.name),
+                    email => bin(Individual#individual.email),
+                    phone => bin(Individual#individual.phone)}).
+
+-spec metadata_to_json(#metadata{}) -> map().
+metadata_to_json(Metadata) ->
+    prune_content(#{
+        timestamp => bin(Metadata#metadata.timestamp),
+        tools => [#{name => bin(T)} || T <- Metadata#metadata.tools],
+        component => component_to_json(Metadata#metadata.component),
+        manufacturer => manufacturer_to_json(Metadata#metadata.manufacturer),
+        authors => individuals_to_json(Metadata#metadata.authors),
+        licenses => licenses_to_json(Metadata#metadata.licenses)
+    }).
+
+-spec manufacturer_to_json(#organization{} | undefined) -> map() | undefined.
+manufacturer_to_json(undefined) ->
+    undefined;
+manufacturer_to_json(Manufacturer) ->
+    prune_content(#{
+        name => bin(Manufacturer#organization.name),
+        address => address_to_json(Manufacturer#organization.address),
+        url => urls_to_json(Manufacturer#organization.url),
+        contact => individuals_to_json(Manufacturer#organization.contact)
+    }).
+
+-spec address_to_json(#address{}) -> map().
+address_to_json(Address) ->
+    prune_content(#{
+        country => bin(Address#address.country),
+        region => bin(Address#address.region),
+        locality => bin(Address#address.locality),
+        post_office_box_number => bin(Address#address.post_office_box_number),
+        postal_code => bin(Address#address.postal_code),
+        street_address => bin(Address#address.street_address)
+    }).
+
+-spec urls_to_json([string()]) -> [string()].
+urls_to_json([]) ->
+    undefined;
+urls_to_json(Urls) ->
+    [bin(Url) || Url <- Urls].
 
 hashes_to_json(Hashes) ->
     [hash_to_json(H) || H <- Hashes].

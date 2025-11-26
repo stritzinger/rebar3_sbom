@@ -1,3 +1,5 @@
+%--- Macros --------------------------------------------------------------------
+
 -define(APP, "rebar3_sbom").
 -define(DEFAULT_OUTPUT, "./bom.[xml|json]").
 -define(DEFAULT_VERSION, 1).
@@ -5,6 +7,49 @@
 -define(DEPS, [lock]).
 -define(SPEC_VERSION, <<"1.6">>).
 
+%--- Types ---------------------------------------------------------------------
+
+-type bom_ref() :: string().
+-type spdx_licence_id() :: string(). % TODO: enumerate the valid SPDX licence IDs
+-type properties() :: [{string(), string()}].
+
+%--- Records -------------------------------------------------------------------
+
+% Alias Author, Contact
+-record(individual, {
+    bom_ref :: bom_ref() | undefined,
+    name :: string() | undefined,
+    email :: string() | undefined,
+    phone :: string() | undefined
+}).
+
+-record(address, {
+    bom_ref :: bom_ref() | undefined,
+    country :: string() | undefined,
+    region :: string() | undefined,
+    locality :: string() | undefined,
+    post_office_box_number :: string() | undefined,
+    postal_code :: string() | undefined,
+    street_address :: string() | undefined
+}).
+
+% Alias Manufacturer object
+-record(organization, {
+    bom_ref :: bom_ref() | undefined,
+    name :: string() | undefined,
+    address :: #address{} | undefined,
+    url = [] :: [string()],
+    contact = [] :: [#individual{}]
+}).
+
+% Not adding Text, URL, Licensing for now
+-record(license, {
+    bom_ref :: bom_ref(),
+    id :: spdx_licence_id(),
+    name :: string(),
+    acknowledgement :: declared | concluded,
+    properties = [] :: properties()
+}).
 
 -record(component, {
     type = "application",
@@ -22,7 +67,11 @@
 -record(metadata, {
     timestamp :: string(),
     component :: #component{},
-    tools = [] :: [string()]
+    tools = [] :: [string()],
+    manufacturer = undefined :: #organization{} | undefined,
+    authors = [] :: [#individual{}],
+    licenses = [] :: [#license{}],
+    properties = [] :: properties()
 }).
 
 -record(dependency, {

@@ -19,7 +19,8 @@ init(State) ->
               {format, $F, "format", {string, "xml"}, "file format, [xml|json]"},
               {output, $o, "output", {string, ?DEFAULT_OUTPUT}, "the full path to the SBoM output file"},
               {force, $f, "force", {boolean, false}, "overwite existing files without prompting for confirmation"},
-              {strict_version, $V, "strict_version", {boolean, true}, "modify the version number of the bom only when the content changes"}
+              {strict_version, $V, "strict_version", {boolean, true}, "modify the version number of the BoM only when the content changes"},
+              {author, $a, "author", string, "the author of the SBoM"}
             ]},
             {short_desc, "Generates CycloneDX SBoM"},
             {desc, "Generates a Software Bill-of-Materials (SBoM) in CycloneDX format"}
@@ -39,7 +40,8 @@ do(State) ->
     FilePath = filepath(Output, Format),
     DepsInfo = [dep_info(Dep) || Dep <- rebar_state:all_deps(State)],
     AppInfo = dep_info(App),
-    SBoM = rebar3_sbom_cyclonedx:bom({FilePath, Format}, IsStrictVersion, AppInfo, DepsInfo),
+    MetadataInfo = metadata(State),
+    SBoM = rebar3_sbom_cyclonedx:bom({FilePath, Format}, IsStrictVersion, AppInfo, DepsInfo, MetadataInfo),
     Contents = case Format of
         "xml" -> rebar3_sbom_xml:encode(SBoM);
         "json" -> rebar3_sbom_json:encode(SBoM)
@@ -55,6 +57,16 @@ do(State) ->
 -spec format_error(any()) -> iolist().
 format_error(Message) ->
     io_lib:format("~s", [Message]).
+
+-spec metadata(rebar_state:t()) -> proplists:proplist().
+metadata(State) ->
+    {Args, _} = rebar_state:command_parsed_args(State),
+    PluginOpts = rebar_state:get(State, rebar3_sbom, []),
+    Manufacturer = proplists:get_value(sbom_manufacturer, PluginOpts, undefined),
+    Licenses = proplists:get_value(sbom_licenses, PluginOpts, undefined),
+    [{author, proplists:get_value(author, Args, undefined)},
+     {manufacturer, Manufacturer},
+     {licenses, Licenses}].
 
 dep_info(Dep) ->
     Name = rebar_app_info:name(Dep),
@@ -74,7 +86,7 @@ dep_info(Dep) ->
     Licenses = lists:usort(Licenses0 ++ HexMetadataLicenses),
     Common =
         [
-         {authors, proplists:get_value(maintainers, Details)},
+         {authors, proplists:get_value(maintainers, Details, [])},
          {description, proplists:get_value(description, Details)},
          {licenses, Licenses},
          {external_references, ExternalReferences},

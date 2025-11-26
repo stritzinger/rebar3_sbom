@@ -1,17 +1,17 @@
 -module(rebar3_sbom_cyclonedx).
 
--export([bom/4, bom/5, uuid/0]).
+-export([bom/5, bom/6, uuid/0]).
 
 -include("rebar3_sbom.hrl").
 
-bom(FileInfo, IsStrictVersion, AppInfo, RawComponents) ->
-    bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, uuid()).
+bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, MetadataInfo) ->
+    bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, uuid(), MetadataInfo).
 
-bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial) ->
+bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial, MetadataInfo) ->
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
     SBoM = #sbom{
         serial = Serial,
-        metadata = metadata(AppInfo),
+        metadata = metadata(AppInfo, MetadataInfo),
         components = components(ValidRawComponents),
         dependencies = [dependency(AppInfo) | dependencies(ValidRawComponents)]
     },
@@ -24,12 +24,42 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial) -
         SBoM
     end.
 
-metadata(App) ->
+-spec metadata(App, MetadataInfo) -> Metadata when
+    App :: proplists:proplist(),
+    MetadataInfo :: proplists:proplist(),
+    Metadata :: #metadata{}.
+metadata(App, MetadataInfo) ->
     #metadata{
         timestamp = calendar:system_time_to_rfc3339(erlang:system_time(second)),
         tools = [?APP],
-        component = component(App)
+        manufacturer = manufacturer(proplists:get_value(manufacturer, MetadataInfo, undefined)),
+        authors = sbom_authors(proplists:get_value(author, MetadataInfo, undefined), App),
+        component = component(App),
+        licenses = sbom_licenses(proplists:get_value(licenses, MetadataInfo, undefined), App)
     }.
+
+-spec sbom_authors(Author, App) -> Authors when
+    Author :: undefined | string(),
+    App :: proplists:proplist(),
+    Authors :: [#individual{}].
+sbom_authors(undefined, App) ->
+    case os:getenv("GITHUB_ACTOR") of
+        false ->
+            authors(App);
+        Actor ->
+            [#individual{name = Actor}]
+    end;
+sbom_authors(Author, _App) ->
+    [#individual{name = Author}].
+
+-spec sbom_licenses(Licenses, App) -> Licenses when
+    Licenses :: undefined | [string()],
+    App :: proplists:proplist(),
+    Licenses :: [#license{}].
+sbom_licenses(undefined, App) ->
+    component_field(licenses, App);
+sbom_licenses(Licenses, _App) ->
+    [license(License) || License <- Licenses].
 
 components(RawComponents) ->
     [component(RawComponent) || RawComponent <- RawComponents].
@@ -38,7 +68,7 @@ component(RawComponent) ->
     #component{
         bom_ref = bom_ref_of_component(RawComponent),
         name = component_field(name, RawComponent),
-        authors = component_field(authors, RawComponent),
+        authors = authors(RawComponent),
         version = component_field(version, RawComponent),
         description = component_field(description, RawComponent),
         hashes = component_field(sha256, RawComponent),
@@ -47,13 +77,6 @@ component(RawComponent) ->
         purl = component_field(purl, RawComponent)
     }.
 
-component_field(authors = Field, RawComponent) ->
-    case proplists:get_value(Field, RawComponent) of
-        undefined ->
-            [];
-        Values ->
-            [#{name => V} || V <- Values]
-    end;
 component_field(licenses = Field, RawComponent) ->
     case proplists:get_value(Field, RawComponent) of
         undefined ->
@@ -92,6 +115,49 @@ license(Name) ->
         SpdxId ->
             #{id => SpdxId}
     end.
+
+-spec manufacturer(Manufacturer) -> Manufacturer when
+    Manufacturer :: undefined | map(),
+    Manufacturer :: #organization{} | undefined.
+manufacturer(undefined) ->
+    undefined;
+manufacturer(Manufacturer) ->
+    #organization{name = maps:get(name, Manufacturer, undefined),
+                  address = address(maps:get(address, Manufacturer, undefined)),
+                  url = maps:get(url, Manufacturer, []),
+                  contact = individuals(maps:get(contact, Manufacturer, undefined))
+}.
+
+-spec address(undefined | map()) -> undefined | #address{}.
+address(undefined) ->
+    undefined;
+address(AddressMap) ->
+    #address{
+        country = maps:get(country, AddressMap, undefined),
+        region = maps:get(region, AddressMap, undefined),
+        locality = maps:get(locality, AddressMap, undefined),
+        post_office_box_number = maps:get(post_office_box_number, AddressMap, undefined),
+        postal_code = maps:get(postal_code, AddressMap, undefined),
+        street_address = maps:get(street_address, AddressMap, undefined)
+    }.
+
+-spec individuals(Individuals) -> Individuals when
+    Individuals :: [string()],
+    Individuals :: [#individual{}].
+individuals(undefined) ->
+    [];
+individuals(Individuals) ->
+    lists:map(fun(Individual) ->
+        #individual{name = maps:get(name, Individual, undefined),
+                    email = maps:get(email, Individual, undefined),
+                    phone = maps:get(phone, Individual, undefined)}
+    end, Individuals).
+
+-spec authors(App) -> Authors when
+    App :: proplists:proplist(),
+    Authors :: [#individual{}].
+authors(App) ->
+    [#individual{name = Name} || Name <- proplists:get_value(authors, App, [])].
 
 uuid() ->
     [A, B, C, D, E] = [crypto:strong_rand_bytes(Len) || Len <- [4, 2, 2, 2, 6]],
