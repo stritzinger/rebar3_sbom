@@ -10,7 +10,7 @@
 %--- Types ---------------------------------------------------------------------
 
 -type bom_ref() :: string().
--type spdx_licence_id() :: string().
+-type spdx_licence_id() :: string(). % TODO: enumerate the valid SPDX licence IDs
 -type properties() :: [{string(), string()}].
 
 %--- Records -------------------------------------------------------------------
@@ -38,7 +38,7 @@
     bom_ref :: bom_ref() | undefined,
     name :: string() | undefined,
     address :: #address{} | undefined,
-    url :: string() | undefined,
+    url = [] :: [string()],
     contact = [] :: [#individual{}]
 }).
 

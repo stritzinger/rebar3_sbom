@@ -14,6 +14,7 @@
 -export([default_author_test/1]).
 -export([no_sbom_manufacturer_test/1]).
 -export([no_sbom_licenses_test/1]).
+-export([empty_manufacturer_url_test/1]).
 
 % metadata group test cases
 -export([timestamp_test/1]).
@@ -66,11 +67,12 @@ groups() -> [{basic_app, [], [required_fields_test,
                               github_actor_test,
                               default_author_test,
                               no_sbom_manufacturer_test,
-                              no_sbom_licenses_test]},
+                              no_sbom_licenses_test,
+                              empty_manufacturer_url_test]},
              {metadata, [], [timestamp_test,
                              % tools_test,
                              metadata_authors_test,
-                             licenses_test,
+                             licenses_test, % TODO validate the license.id using CycloneDX list of valid SPDX license ID
                              component_test,
                              manufacturer_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
@@ -143,6 +145,19 @@ init_per_testcase(Testcase, Config)
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
+init_per_testcase(empty_manufacturer_url_test, Config) ->
+    State = init_rebar_state(Config),
+    PluginOpts = rebar_state:get(State, rebar3_sbom),
+    Manufacturer = proplists:get_value(sbom_manufacturer, PluginOpts),
+    NewPluginOpts = lists:keyreplace(sbom_manufacturer, 1, PluginOpts,
+                                     {sbom_manufacturer, maps:remove(url, Manufacturer)}),
+    State2 = rebar_state:set(State, rebar3_sbom, NewPluginOpts),
+    SBoMPath = ?config(sbom_path, Config),
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
+    {ok, _FinalState} = rebar3:run(State2, Cmd),
+    {ok, File} = file:read_file(SBoMPath),
+    NewSBoMJSON = json:decode(File),
+    [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(_, Config) ->
     Config.
 
@@ -194,6 +209,11 @@ no_sbom_licenses_test(Config) ->
     #{<<"metadata">> := #{<<"licenses">> := MetadataLicenses,
       <<"component">> := #{<<"licenses">> := ComponentLicenses}}} = SBoMJSON,
     ?assertMatch(ComponentLicenses, MetadataLicenses).
+
+empty_manufacturer_url_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := #{<<"manufacturer">> := Manufacturer}} = SBoMJSON,
+    ?assertNotMatch(#{<<"url">> := _}, Manufacturer).
 
 %--- metadata group ---
 timestamp_test(Config) ->
@@ -276,9 +296,12 @@ manufacturer_test(Config) ->
     ?assertEqual(#{<<"name">> => <<"Frodo Baggins">>}, Contact1),
     ?assertEqual(#{<<"name">> => <<"Gandalf the Grey">>,
                    <<"phone">> => <<"1234567890">>}, Contact2),
+    ?assertMatch(#{<<"url">> := [_ | _]}, Manufacturer),
+    #{<<"url">> := [Url1, Url2]} = Manufacturer,
+    ?assertEqual(<<"https://example.com">>, Url1),
+    ?assertEqual(<<"https://another-example.com">>, Url2),
     ?assertNotMatch(#{<<"post_office_box_number">> := _}, Address),
-    ?assertNotMatch(#{<<"bom-ref">> := _}, Manufacturer),
-    ?assertNotMatch(#{<<"url">> := _}, Manufacturer).
+    ?assertNotMatch(#{<<"bom-ref">> := _}, Manufacturer).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->

@@ -81,7 +81,7 @@ manufacturer_to_json(Manufacturer) ->
     prune_content(#{
         name => bin(Manufacturer#organization.name),
         address => address_to_json(Manufacturer#organization.address),
-        url => bin(Manufacturer#organization.url),
+        url => urls_to_json(Manufacturer#organization.url),
         contact => individuals_to_json(Manufacturer#organization.contact)
     }).
 
@@ -95,6 +95,12 @@ address_to_json(Address) ->
         postal_code => bin(Address#address.postal_code),
         street_address => bin(Address#address.street_address)
     }).
+
+-spec urls_to_json([string()]) -> [string()].
+urls_to_json(undefined) ->
+    undefined;
+urls_to_json(Urls) ->
+    [bin(Url) || Url <- Urls].
 
 hashes_to_json(Hashes) ->
     [hash_to_json(H) || H <- Hashes].

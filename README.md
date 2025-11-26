@@ -25,7 +25,7 @@ You can configure additional SBoM metadata in your `rebar.config`:
     {rebar3_sbom, [
         {sbom_manufacturer, #{          % Optional, all fields inside are optional
             name => "Your Organization",
-            url => "https://example.com",
+            url => ["https://example.com", "https://another-example.com"],
             address => #{
                 country => "Country",
                 region => "State",
