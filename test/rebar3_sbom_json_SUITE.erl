@@ -30,6 +30,7 @@
 -export([scope_test/1]).
 -export([component_hashes_test/1]).
 -export([component_licenses_test/1]).
+-export([component_purl_test/1]).
 
 % basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
@@ -86,7 +87,8 @@ groups() -> [{basic_app, [], [required_fields_test,
              {components, [], [required_component_fields_test,
                                scope_test,
                                component_hashes_test,
-                               component_licenses_test]},
+                               component_licenses_test,
+                               component_purl_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -361,6 +363,14 @@ component_licenses_test(Config) ->
         % All deps of basic_app have at least one license
         ?assertNotMatch([], Licenses),
         check_licenses_constraints(Licenses)
+    end, Components).
+
+component_purl_test(Config) ->
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    lists:foreach(fun(Component) ->
+        #{<<"name">> := Name, <<"version">> := Version, <<"purl">> := Purl} = Component,
+        check_purl_format(Purl),
+        ?assertEqual(<<"pkg:hex/", Name/bitstring, "@", Version/bitstring>>, Purl)
     end, Components).
 
 %--- basic_app_with_sbom group ---
