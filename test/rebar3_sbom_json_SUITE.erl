@@ -32,6 +32,7 @@
 -export([component_hashes_test/1]).
 -export([component_licenses_test/1]).
 -export([component_purl_test/1]).
+-export([component_cpe_test/1]).
 
 % basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
@@ -93,7 +94,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                                scope_test,
                                component_hashes_test,
                                component_licenses_test,
-                               component_purl_test]},
+                               component_purl_test,
+                               component_cpe_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -397,6 +399,21 @@ component_purl_test(Config) ->
         ?assertEqual(<<"pkg:hex/", Name/bitstring, "@", Version/bitstring>>, Purl)
     end, Components).
 
+
+component_cpe_test(Config) ->
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    lists:foreach(fun(Component) ->
+        #{<<"name">> := Name, <<"version">> := Version,
+          <<"cpe">> := Cpe} = Component,
+        check_cpe_format(Cpe),
+        CpeList = string:tokens(binary_to_list(Cpe), ":"),
+        [_, CpeVersion, Part, _, CpeProduct, CpeAppVersion | _] = CpeList,
+        ?assertEqual(binary_to_list(?CPE_VERSION), CpeVersion),
+        ?assertEqual("a", Part),
+        ?assertEqual(binary_to_list(Name), CpeProduct),
+        ?assertEqual(binary_to_list(Version), CpeAppVersion)
+    end, Components).
+
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
     OldSBoMJSON = ?config(sbom_json, Config),
@@ -515,3 +532,6 @@ get_tar_hash(PrivDir) ->
     {ok, Content} = file:read_file(PrivDir ++ ?TAR_REL_PATH),
     ComputedHash = crypto:hash(sha256, Content),
     iolist_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= ComputedHash]).
+
+check_cpe_format(Cpe) ->
+    ?assertNotEqual(nomatch, re:run(Cpe, ?CPE_REGEX)).
