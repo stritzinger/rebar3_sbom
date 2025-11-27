@@ -93,11 +93,8 @@ dep_info(Dep) ->
          {licenses, Licenses},
          {external_references, ExternalReferences},
          {dependencies, Deps},
-<<<<<<< HEAD
-         {scope, required}
-=======
+         {scope, required},
          {cpe, cpe(HexMetadata, Name, list_to_binary(Version))}
->>>>>>> efe8066 (CPE field in SBoM)
         ],
     dep_info(Name, Version, Source, Common).
 
