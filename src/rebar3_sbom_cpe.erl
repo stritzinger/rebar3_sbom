@@ -1,7 +1,6 @@
 -module(rebar3_sbom_cpe).
 
 -export([hex/3]).
--export([hex/4]).
 
 % Includes
 -include("rebar3_sbom.hrl").
@@ -31,47 +30,36 @@
     Version :: bitstring(),
     Url :: bitstring() | undefined,
     CPE :: bitstring().
-hex(Name, Version, URL) ->
-    hex(Name, Version, URL, #{}).
-
--spec hex(Name, Version, Url, Opts) -> CPE when
-    Name :: bitstring(),
-    Version :: bitstring(),
-    Url :: bitstring() | undefined,
-    Opts :: cpe_opts(),
-    CPE :: bitstring().
-hex(<<"hex_core">>, Version, _, _) ->
+hex(<<"hex_core">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":hex:hex_core:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(<<"plug">>, Version, _, _) ->
+hex(<<"plug">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":elixir-plug:plug:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(<<"phoenix">>, Version, _, _) ->
+hex(<<"phoenix">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":phoenixframework:phoenix:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(<<"coherence">>, Version, _, _) ->
+hex(<<"coherence">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":coherence_project:coherence:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(<<"xain">>, Version, _, _) ->
+hex(<<"xain">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":emetrotel:xain:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(<<"sweet_xml">>, Version, _, _) ->
+hex(<<"sweet_xml">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":kbrw:sweet_xml:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(<<"crypto">>, Version, _, _) ->
+hex(<<"erlang/otp">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":erlang:crypto:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(<<"erlang/otp">>, Version, _, Opts) ->
-    Update = maps:get(update, Opts, "*"),
-    <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":erlang:erlang\/otp:", Version/bitstring, ":", Update/bitstring,
-      ":*:*:*:*:*:*">>;
-hex(<<"rebar3">>, Version, _, _) ->
+      ":erlang:erlang\/otp:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+hex(<<"rebar3">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":erlang:rebar3:", Version/bitstring, ":*:*:*:*:*:*:*">>;
-hex(_Name, _Version, undefined, _) ->
+hex(<<"elixir">>, Version, _) ->
+    <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
+      ":elixir-lang:elixir:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+hex(_Name, _Version, undefined) ->
     undefined;
-hex(Name, Version, Url, _) ->
+hex(Name, Version, Url) ->
     Organization = github_url(Url),
     cpe(Organization, Name, Version).
 

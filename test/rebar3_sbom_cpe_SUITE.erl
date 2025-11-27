@@ -14,6 +14,7 @@
 -export([sweet_xml_cpe_test/1]).
 -export([erlang_otp_cpe_test/1]).
 -export([rebar3_cpe_test/1]).
+-export([elixir_cpe_test/1]).
 -export([no_url_test/1]).
 
 % Includes
@@ -30,6 +31,7 @@ all() -> [hex_core_cpe_test,
           sweet_xml_cpe_test,
           erlang_otp_cpe_test,
           rebar3_cpe_test,
+          elixir_cpe_test,
           no_url_test].
 
 init_per_suite(Config) ->
@@ -71,19 +73,16 @@ sweet_xml_cpe_test(_) ->
     ?assertEqual(<<"cpe:2.3:a:kbrw:sweet_xml:1.0.0:*:*:*:*:*:*:*">>, CPE).
 
 erlang_otp_cpe_test(_) ->
-    OTP_19_RC1_CPE = rebar3_sbom_cpe:hex(<<"erlang/otp">>, <<"19.0">>,
-                                         undefined, #{update => <<"rc1">>}),
-    ?assertEqual(<<"cpe:2.3:a:erlang:erlang\/otp:19.0:rc1:*:*:*:*:*:*">>,
-                 OTP_19_RC1_CPE),
-    OTP_28_CPE = rebar3_sbom_cpe:hex(<<"erlang/otp">>, <<"28.0">>, undefined,
-                                     #{update => <<"-">>}),
-    ?assertEqual(<<"cpe:2.3:a:erlang:erlang\/otp:28.0:-:*:*:*:*:*:*">>,
-                 OTP_28_CPE).
+    CPE = rebar3_sbom_cpe:hex(<<"erlang/otp">>, <<"28.0">>, undefined),
+    ?assertEqual(<<"cpe:2.3:a:erlang:erlang\/otp:28.0:*:*:*:*:*:*:*">>, CPE).
 
 rebar3_cpe_test(_) ->
-    REBAR3_CPE = rebar3_sbom_cpe:hex(<<"rebar3">>, <<"3.14.1">>, undefined),
-    ?assertEqual(<<"cpe:2.3:a:erlang:rebar3:3.14.1:*:*:*:*:*:*:*">>,
-                 REBAR3_CPE).
+    CPE = rebar3_sbom_cpe:hex(<<"rebar3">>, <<"3.14.1">>, undefined),
+    ?assertEqual(<<"cpe:2.3:a:erlang:rebar3:3.14.1:*:*:*:*:*:*:*">>, CPE).
+
+elixir_cpe_test(_) ->
+    CPE = rebar3_sbom_cpe:hex(<<"elixir">>, <<"1.19.3">>, undefined),
+    ?assertEqual(<<"cpe:2.3:a:elixir-lang:elixir:1.19.3:*:*:*:*:*:*:*">>, CPE).
 
 no_url_test(_) ->
     CPE = rebar3_sbom_cpe:hex(<<"grisp">>, <<"1.0.0">>, undefined),
