@@ -48,6 +48,7 @@ component_to_json(C) ->
         hashes => hashes_to_json(C#component.hashes),
         licenses => licenses_to_json(C#component.licenses),
         externalReferences => external_references_to_json(C#component.externalReferences),
+        cpe => bin(C#component.cpe),
         purl => bin(C#component.purl)
     }).
 
@@ -150,6 +151,7 @@ json_to_components(C) ->
         hashes = json_to_component_field(<<"hashes">>, C),
         licenses = json_to_component_field(<<"licenses">>, C),
         name = json_to_component_field(<<"name">>, C),
+        cpe = json_to_component_field(<<"cpe">>, C),
         purl = json_to_component_field(<<"purl">>, C),
         type = json_to_component_field(<<"type">>, C),
         externalReferences = json_to_component_field(<<"externalReferences">>, C),

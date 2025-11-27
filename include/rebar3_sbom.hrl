@@ -63,6 +63,7 @@
     hashes = [] :: [#{alg := string(), hash := string()}],
     licenses = [] :: [#{name := string()} | #{id := string()}],
     externalReferences = [] :: [#{type := string(), url := string()}],
+    cpe :: string() | undefined,
     purl :: string()
 }).
 

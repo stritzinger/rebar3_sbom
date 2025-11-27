@@ -70,13 +70,14 @@ metadata(State) ->
      {licenses, Licenses}].
 
 dep_info(Dep) ->
+    HexMetadata = hex_metadata(Dep),
     Name = rebar_app_info:name(Dep),
     Version = rebar_app_info:original_vsn(Dep),
     Source = rebar_app_info:source(Dep),
     Details = rebar_app_info:app_details(Dep),
     Deps = rebar_app_info:deps(Dep),
     Licenses0 = proplists:get_value(licenses, Details, []),
-    HexMetadataLicenses = hex_metadata_licenses(Dep),
+    HexMetadataLicenses = hex_metadata_licenses(HexMetadata),
     ExternalReferences = case proplists:get_value(links, Details) of
         undefined ->
             undefined;
@@ -92,11 +93,15 @@ dep_info(Dep) ->
          {licenses, Licenses},
          {external_references, ExternalReferences},
          {dependencies, Deps},
+<<<<<<< HEAD
          {scope, required}
+=======
+         {cpe, cpe(HexMetadata, Name, list_to_binary(Version))}
+>>>>>>> efe8066 (CPE field in SBoM)
         ],
     dep_info(Name, Version, Source, Common).
 
-hex_metadata_licenses(Dep) ->
+hex_metadata(Dep) ->
     DepDir = rebar_app_info:dir(Dep),
     % hardcoded in rebar3, too
     HexMetadataFile = "hex_metadata.config",
@@ -105,10 +110,22 @@ hex_metadata_licenses(Dep) ->
     case filelib:is_regular(HexMetadataPath) of
         true ->
             {ok, Terms} = file:consult(HexMetadataPath),
-            HexMetadataLicenses = proplists:get_value(<<"licenses">>, Terms, []),
-            [binary_to_list(HexMetadataLicense) || HexMetadataLicense <- HexMetadataLicenses];
+            Terms;
         false ->
             []
+    end.
+
+hex_metadata_licenses(HexMetadata) ->
+    HexMetadataLicenses = proplists:get_value(<<"licenses">>, HexMetadata, []),
+    [binary_to_list(HexMetadataLicense) || HexMetadataLicense <- HexMetadataLicenses].
+
+cpe(HexMetadata, Name, Version) ->
+    Links = proplists:get_value(<<"links">>, HexMetadata, []),
+    case lists:keyfind(<<"GitHub">>, 1, Links) of
+        {_, Url} ->
+            rebar3_sbom_cpe:hex(Name, Version, Url);
+        false ->
+            rebar3_sbom_cpe:hex(Name, Version, undefined)
     end.
 
 find_references(Links) ->

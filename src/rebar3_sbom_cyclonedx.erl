@@ -75,6 +75,7 @@ component(RawComponent) ->
         hashes = component_field(sha256, RawComponent),
         licenses = component_field(licenses, RawComponent),
         externalReferences = component_field(external_references, RawComponent),
+        cpe = component_field(cpe, RawComponent),
         purl = component_field(purl, RawComponent)
     }.
 
