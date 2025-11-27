@@ -16,6 +16,7 @@
 -export([no_sbom_licenses_test/1]).
 -export([empty_manufacturer_url_test/1]).
 -export([manufacturer_empty_url_array_test/1]).
+-export([metadata_component_hashes_test/1]).
 
 % metadata group test cases
 -export([timestamp_test/1]).
@@ -62,6 +63,7 @@
                                  <<"Streebog-512">>]).
 -define(HASH_CONTENT_REGEX, "^([a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128})$").
 -define(PURL_REGEX, "^pkg:[a-z][a-z0-9+.-]*/([^/@?#]+/)*[^/@?#]+(@[^?#]+)?(\\?[^#]+)?(#.+)?$").
+-define(TAR_REL_PATH, "/_build/default/rel/basic_app/basic_app-0.1.0.tar.gz").
 
 %--- Common test functions -----------------------------------------------------
 
@@ -77,7 +79,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                               default_author_test,
                               no_sbom_manufacturer_test,
                               no_sbom_licenses_test,
-                              empty_manufacturer_url_test]},
+                              empty_manufacturer_url_test,
+                              metadata_component_hashes_test]},
              {metadata, [], [timestamp_test,
                              % tools_test,
                              metadata_authors_test,
@@ -185,6 +188,16 @@ init_per_testcase(manufacturer_empty_url_array_test, Config) ->
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
+init_per_testcase(metadata_component_hashes_test, Config) ->
+    State = init_rebar_state(Config),
+    SBoMPath = ?config(sbom_path, Config),
+    {ok, State2} = rebar3:run(State, ["tar"]),
+    ExpectedHash = get_tar_hash(?config(priv_dir, Config)),
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
+    {ok, _FinalState} = rebar3:run(State2, Cmd),
+    {ok, File} = file:read_file(SBoMPath),
+    NewSBoMJSON = json:decode(File),
+    [{sbom_json, NewSBoMJSON}, {expected_hash, ExpectedHash} | Config];
 init_per_testcase(_, Config) ->
     Config.
 
@@ -247,6 +260,16 @@ manufacturer_empty_url_array_test(Config) ->
     #{<<"metadata">> := #{<<"manufacturer">> := Manufacturer}} = SBoMJSON,
     ?assertNotMatch(#{<<"url">> := _}, Manufacturer).
 
+metadata_component_hashes_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    ExpectedHash = ?config(expected_hash, Config),
+    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
+    #{<<"hashes">> := Hashes} = Component,
+    check_hashes_constraints(Hashes),
+    [Hash] = Hashes,
+    ?assertMatch(#{<<"alg">> := <<"SHA-256">>,
+                   <<"content">> := ExpectedHash}, Hash).
+
 %--- metadata group ---
 timestamp_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
@@ -298,15 +321,14 @@ component_test(Config) ->
     check_component_constraints(Component),
     #{<<"type">> := Type, <<"name">> := Name, <<"version">> := Version,
       <<"description">> := Description, <<"licenses">> := [License],
-      <<"purl">> := Purl} = Component,
+      <<"purl">> := Purl, <<"hashes">> := Hashes} = Component,
     ?assertEqual(<<"application">>, Type, "metadata.component.type"),
     ?assertEqual(<<"basic_app">>, Name, "metadata.component.name"),
     ?assertEqual(<<"0.1.0">>, Version, "metadata.component.version"),
     ?assertEqual(<<"An OTP application">>, Description,
                  "metadata.component.description"),
-    % We don't check the hashes for now because it's not properly handled yet
-    % A tarball will be required to generate an hash. Without it, we will skip
-    % check_hashes_constraints(Hashes),
+    % Hashes are empty because we don't have a tarball to compute it
+    ?assertEqual([], Hashes, "metadata.component.hashes"),
     ?assertMatch(#{<<"license">> := #{<<"id">> := <<"Apache-2.0">>}}, License,
                  "metadata.component.licenses[0].license.id"),
     check_purl_format(Purl),
@@ -486,3 +508,8 @@ check_licenses_constraints(Licenses) ->
     lists:foreach(fun(License) ->
         ?assertMatch(#{<<"license">> := #{<<"id">> := _}}, License)
     end, Licenses).
+
+get_tar_hash(PrivDir) ->
+    {ok, Content} = file:read_file(PrivDir ++ ?TAR_REL_PATH),
+    ComputedHash = crypto:hash(sha256, Content),
+    iolist_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= ComputedHash]).

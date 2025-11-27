@@ -76,3 +76,10 @@ generate an SBoM covering development environments specify the relevant
 profiles using 'as':
 
     $ rebar3 as default,test,docs sbom -o dev_bom.xml
+
+Hash Generation
+---------------
+
+For the main component (`metadata.component`), the plugin computes the SHA-256 hash of the release tarball (`<name>-<version>.tar.gz`) found in the release directory.
+
+If the tarball does not exist (e.g., because `rebar3 tar` hasn't been run), no hash is included for the main component, and a warning is logged.
