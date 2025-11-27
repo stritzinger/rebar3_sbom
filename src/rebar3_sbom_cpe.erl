@@ -65,7 +65,7 @@ hex(<<"erlang/otp">>, Version, _, Opts) ->
     Update = maps:get(update, Opts, "*"),
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":erlang:erlang\/otp:", Version/bitstring, ":", Update/bitstring,
-      ":*:*:*:*:*:*:*">>;
+      ":*:*:*:*:*:*">>;
 hex(<<"rebar3">>, Version, _, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":erlang:rebar3:", Version/bitstring, ":*:*:*:*:*:*:*">>;

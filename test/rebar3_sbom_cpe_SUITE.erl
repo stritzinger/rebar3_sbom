@@ -73,7 +73,7 @@ sweet_xml_cpe_test(_) ->
 erlang_otp_cpe_test(_) ->
     OTP_19_RC1_CPE = rebar3_sbom_cpe:hex(<<"erlang/otp">>, <<"19.0">>,
                                          undefined, #{update => <<"rc1">>}),
-    ?assertEqual(<<"cpe:2.3:a:erlang:erlang\/otp:19.0:rc1:*:*:*:*:*:*:*">>,
+    ?assertEqual(<<"cpe:2.3:a:erlang:erlang\/otp:19.0:rc1:*:*:*:*:*:*">>,
                  OTP_19_RC1_CPE),
     OTP_28_CPE = rebar3_sbom_cpe:hex(<<"erlang/otp">>, <<"28.0">>, undefined,
                                      #{update => <<"-">>}),
