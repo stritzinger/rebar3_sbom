@@ -40,8 +40,9 @@ do(State) ->
     FilePath = filepath(Output, Format),
     DepsInfo = [dep_info(Dep) || Dep <- rebar_state:all_deps(State)],
     AppInfo = dep_info(App),
+    AppInfo2 = [ {sha256, hash(AppInfo, rebar_dir:base_dir(State))} | AppInfo],
     MetadataInfo = metadata(State),
-    SBoM = rebar3_sbom_cyclonedx:bom({FilePath, Format}, IsStrictVersion, AppInfo, DepsInfo, MetadataInfo),
+    SBoM = rebar3_sbom_cyclonedx:bom({FilePath, Format}, IsStrictVersion, AppInfo2, DepsInfo, MetadataInfo),
     Contents = case Format of
         "xml" -> rebar3_sbom_xml:encode(SBoM);
         "json" -> rebar3_sbom_json:encode(SBoM)
@@ -168,7 +169,11 @@ dep_info(Name, Version, {git_subdir, Git, Ref, _Dir}, Common) ->
 
 dep_info(Name, Version, root_app, Common) ->
     Purl = rebar3_sbom_purl:hex(Name, Version),
-    [{name, Name}, {version, Version}, {purl, Purl} | Common].
+    [
+     {name, Name},
+     {version, Version},
+     {purl, Purl}
+    | Common ].
 
 filepath(?DEFAULT_OUTPUT, Format) ->
     "./bom." ++ Format;
@@ -243,3 +248,22 @@ get_github_license(Org, Repo) ->
         _ ->
             {error, request}
     end.
+
+hash(AppInfo, BaseDir) ->
+    Name = proplists:get_value(name, AppInfo),
+    Version = proplists:get_value(version, AppInfo),
+    TarPath = tar_path(BaseDir, Name, Version),
+    case filelib:is_regular(TarPath) of
+        true ->
+            {ok, Content} = file:read_file(TarPath),
+            Hash = crypto:hash(sha256, Content),
+            iolist_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= Hash]);
+        false ->
+            rebar_api:warn("Could not compute hash. Tarball not found: ~p",
+                              [TarPath]),
+            undefined
+    end.
+
+tar_path(BaseDir, Name, Version) ->
+    TarFilename = io_lib:format("~s-~s.tar.gz", [Name, Version]),
+    filename:join([BaseDir, "rel", Name, TarFilename]).
