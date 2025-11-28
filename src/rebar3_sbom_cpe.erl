@@ -7,6 +7,14 @@
 
 %--- Macros --------------------------------------------------------------------
 -define(CPE_PREFIX, <<"cpe:", ?CPE_VERSION/binary>>).
+% Includes the fields:
+% - update
+% - edition
+% - language
+% - target_sw
+% - target_hw
+% - other
+-define(CPE_POSTFIX, <<":*:*:*:*:*:*:*">>).
 
 % The CPE specs define 3 classes of parts:
 % - a: application
@@ -14,14 +22,6 @@
 % - h: hardware
 % We only support application components for now.
 -define(CPE_PART_APPLICATION, <<"a">>).
-
-%--- Types ---------------------------------------------------------------------
-
--type cpe_opts() :: #{update => bitstring(),
-                      edition => bitstring(),
-                      language => bitstring(),
-                      target_sw => bitstring(),
-                      target_hw => bitstring()}.
 
 %--- API -----------------------------------------------------------------------
 
@@ -32,31 +32,31 @@
     CPE :: bitstring().
 hex(<<"hex_core">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":hex:hex_core:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":hex:hex_core:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"plug">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":elixir-plug:plug:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":elixir-plug:plug:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"phoenix">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":phoenixframework:phoenix:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":phoenixframework:phoenix:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"coherence">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":coherence_project:coherence:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":coherence_project:coherence:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"xain">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":emetrotel:xain:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":emetrotel:xain:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"sweet_xml">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":kbrw:sweet_xml:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":kbrw:sweet_xml:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"erlang/otp">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":erlang:erlang\/otp:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":erlang:erlang\/otp:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"rebar3">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":erlang:rebar3:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":erlang:rebar3:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(<<"elixir">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
-      ":elixir-lang:elixir:", Version/bitstring, ":*:*:*:*:*:*:*">>;
+      ":elixir-lang:elixir:", Version/bitstring, ?CPE_POSTFIX/binary>>;
 hex(_Name, _Version, undefined) ->
     undefined;
 hex(Name, Version, Url) ->
@@ -79,4 +79,4 @@ github_url(Url) ->
     Version :: bitstring(),
     CPE :: bitstring().
 cpe(Organization, Name, Version) ->
-    <<"cpe:", ?CPE_VERSION/binary, ":a:", Organization/binary, ":", Name/binary, ":", Version/bitstring, ":*:*:*:*:*:*:*">>.
+    <<?CPE_PREFIX/binary, ":a:", Organization/binary, ":", Name/binary, ":", Version/bitstring, ?CPE_POSTFIX/binary>>.
