@@ -123,7 +123,12 @@ hex_metadata_licenses(HexMetadata) ->
     HexMetadata :: [{binary(), binary()}],
     Links :: [{string(), string()}].
 get_github_link([], Links) ->
-    list_to_binary(proplists:get_value("GitHub", Links, undefined));
+    case proplists:get_value("GitHub", Links, undefined) of
+        undefined ->
+            undefined;
+        Value ->
+            list_to_binary(Value)
+    end;
 get_github_link(HexMetadata, _) ->
     Links = proplists:get_value(<<"links">>, HexMetadata, []),
     proplists:get_value(<<"GitHub">>, Links, undefined).

@@ -40,6 +40,9 @@
 -export([version_increment_test/1]).
 -export([timestamp_increases_test/1]).
 
+% local app group test cases
+-export([metadata_component_empty_links_cpe_test/1]).
+
 % Includes
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
@@ -69,9 +72,12 @@
 % Reference: https://csrc.nist.gov/schema/cpe/2.3/cpe-naming_2.3.xsd
 -define(CPE_REGEX, "^cpe:2\\.3:[aho\\*\\-](:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\*\\-]))(:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){4}$").
 
+-define(BASIC_APP_SBOM, "basic_app_sbom.json").
+-define(LOCAL_APP_SBOM, "local_app_sbom.json").
 %--- Common test functions -----------------------------------------------------
 
-all() -> [{group, basic_app}].
+all() -> [{group, basic_app},
+          {group, local_app}].
 
 groups() -> [{basic_app, [], [required_fields_test,
                               serial_number_test,
@@ -100,7 +106,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                                component_cpe_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
-                                        timestamp_increases_test]}].
+                                        timestamp_increases_test]},
+             {local_app, [], [metadata_component_empty_links_cpe_test]}].
 
 init_per_suite(Config) ->
     application:load(rebar3_sbom),
@@ -113,9 +120,9 @@ end_per_suite(_Config) ->
     ok.
 
 init_per_group(basic_app, Config) ->
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     PrivDir = ?config(priv_dir, Config),
-    SBoMPath = filename:join(PrivDir, "bom.json"),
+    SBoMPath = filename:join(PrivDir, ?BASIC_APP_SBOM),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-a", "Jane Doe"],
     {ok, FinalState} = rebar3:run(State, Cmd),
     {ok, File} = file:read_file(SBoMPath),
@@ -127,7 +134,7 @@ init_per_group(basic_app, Config) ->
      {all_deps, AllDeps} | Config];
 init_per_group(basic_app_with_sbom, Config) ->
     timer:sleep(1000), % makes sure that new generated TS must be different
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     SBoMPath = ?config(sbom_path, Config),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
     {ok, _FinalState} = rebar3:run(State, Cmd),
@@ -137,6 +144,15 @@ init_per_group(basic_app_with_sbom, Config) ->
 init_per_group(metadata, Config) ->
     #{<<"metadata">> := Metadata} = ?config(sbom_json, Config),
     [{metadata, Metadata} | Config];
+init_per_group(local_app, Config) ->
+    State = init_rebar_state(Config, "local_app"),
+    PrivDir = ?config(priv_dir, Config),
+    SBoMPath = filename:join(PrivDir, ?LOCAL_APP_SBOM),
+    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
+    {ok, _FinalState} = rebar3:run(State, Cmd),
+    {ok, File} = file:read_file(SBoMPath),
+    NewSBoMJSON = json:decode(File),
+    [{sbom_json, NewSBoMJSON} | Config];
 init_per_group(_, Config) ->
     Config.
 
@@ -145,7 +161,7 @@ end_per_group(_, _Config) ->
 
 init_per_testcase(github_actor_test, Config) ->
     os:putenv("GITHUB_ACTOR", "Bilbo Baggins"),
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     SBoMPath = ?config(sbom_path, Config),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
     {ok, _FinalState} = rebar3:run(State, Cmd),
@@ -153,7 +169,7 @@ init_per_testcase(github_actor_test, Config) ->
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(default_author_test, Config) ->
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     SBoMPath = ?config(sbom_path, Config),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
     {ok, _FinalState} = rebar3:run(State, Cmd),
@@ -163,7 +179,7 @@ init_per_testcase(default_author_test, Config) ->
 init_per_testcase(Testcase, Config)
     when Testcase =:= no_sbom_manufacturer_test orelse
          Testcase =:= no_sbom_licenses_test ->
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     State2 = rebar_state:set(State, rebar3_sbom, []),
     SBoMPath = ?config(sbom_path, Config),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
@@ -172,7 +188,7 @@ init_per_testcase(Testcase, Config)
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(empty_manufacturer_url_test, Config) ->
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     PluginOpts = rebar_state:get(State, rebar3_sbom),
     Manufacturer = proplists:get_value(sbom_manufacturer, PluginOpts),
     NewPluginOpts = lists:keyreplace(sbom_manufacturer, 1, PluginOpts,
@@ -185,7 +201,7 @@ init_per_testcase(empty_manufacturer_url_test, Config) ->
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(manufacturer_empty_url_array_test, Config) ->
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     PluginOpts = rebar_state:get(State, rebar3_sbom),
     Manufacturer = proplists:get_value(sbom_manufacturer, PluginOpts),
     NewPluginOpts = lists:keyreplace(sbom_manufacturer, 1, PluginOpts,
@@ -198,12 +214,12 @@ init_per_testcase(manufacturer_empty_url_array_test, Config) ->
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
 init_per_testcase(metadata_component_hashes_test, Config) ->
-    State = init_rebar_state(Config),
+    State = init_rebar_state(Config, "basic_app"),
     SBoMPath = ?config(sbom_path, Config),
-    {ok, State2} = rebar3:run(State, ["tar"]),
+    {ok, _} = rebar3:run(State, ["tar"]),
     ExpectedHash = get_tar_hash(?config(priv_dir, Config)),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
-    {ok, _FinalState} = rebar3:run(State2, Cmd),
+    {ok, _FinalState} = rebar3:run(State, Cmd),
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON}, {expected_hash, ExpectedHash} | Config];
@@ -279,6 +295,11 @@ metadata_component_hashes_test(Config) ->
     ?assertMatch(#{<<"alg">> := <<"SHA-256">>,
                    <<"content">> := ExpectedHash}, Hash).
 
+metadata_component_empty_links_cpe_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
+    ?assertNotMatch(#{<<"cpe">> := _}, Component).
+
 %--- metadata group ---
 timestamp_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
@@ -334,7 +355,7 @@ component_test(Config) ->
     ?assertEqual(<<"application">>, Type, "metadata.component.type"),
     ?assertEqual(<<"basic_app">>, Name, "metadata.component.name"),
     ?assertEqual(<<"0.1.0">>, Version, "metadata.component.version"),
-    ?assertEqual(<<"An OTP application">>, Description,
+    ?assertEqual(<<"Basic app for testing rebar3_sbom">>, Description,
                  "metadata.component.description"),
     % Hashes are empty because we don't have a tarball to compute it
     ?assertEqual([], Hashes, "metadata.component.hashes"),
@@ -452,17 +473,17 @@ timestamp_increases_test(Config) ->
     ?assert( OldSysTime < NewSysTime).
 
 %--- Private -------------------------------------------------------------------
-get_app_dir(DataDir) ->
+get_app_dir(DataDir, AppName) ->
     SplitDataDir = filename:split(DataDir),
     JoinedParentDir = filename:join(lists:droplast(SplitDataDir)),
-    AppDir = filename:join(JoinedParentDir, "basic_app"),
+    AppDir = filename:join(JoinedParentDir, AppName),
     true = filelib:is_dir(AppDir),
     AppDir.
 
-init_rebar_state(Config) ->
+init_rebar_state(Config, AppName) ->
     DataDir = ?config(data_dir, Config),
     PrivDir = ?config(priv_dir, Config),
-    AppDir = get_app_dir(DataDir),
+    AppDir = get_app_dir(DataDir, AppName),
     BaseDir = filename:join([PrivDir, "_build"]),
     State = rebar_state:new([
                 {base_dir, BaseDir},

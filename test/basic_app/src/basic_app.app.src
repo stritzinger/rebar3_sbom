@@ -1,5 +1,5 @@
 {application, basic_app, [
-    {description, "An OTP application"},
+    {description, "Basic app for testing rebar3_sbom"},
     {vsn, "0.1.0"},
     {registered, []},
     {mod, {basic_app_app, []}},
