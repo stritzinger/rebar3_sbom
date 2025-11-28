@@ -12,8 +12,6 @@
 -export([version_test/1]).
 -export([github_actor_test/1]).
 -export([default_author_test/1]).
--export([no_sbom_manufacturer_test/1]).
--export([no_sbom_licenses_test/1]).
 -export([empty_manufacturer_url_test/1]).
 -export([manufacturer_empty_url_array_test/1]).
 -export([metadata_component_hashes_test/1]).
@@ -41,6 +39,8 @@
 -export([timestamp_increases_test/1]).
 
 % local app group test cases
+-export([no_sbom_manufacturer_test/1]).
+-export([no_sbom_licenses_test/1]).
 -export([metadata_component_empty_links_cpe_test/1]).
 
 % Includes
@@ -87,8 +87,6 @@ groups() -> [{basic_app, [], [required_fields_test,
                               {group, basic_app_with_sbom},
                               github_actor_test,
                               default_author_test,
-                              no_sbom_manufacturer_test,
-                              no_sbom_licenses_test,
                               empty_manufacturer_url_test,
                               metadata_component_hashes_test]},
              {metadata, [], [timestamp_test,
@@ -107,7 +105,9 @@ groups() -> [{basic_app, [], [required_fields_test,
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]},
-             {local_app, [], [metadata_component_empty_links_cpe_test]}].
+             {local_app, [], [no_sbom_manufacturer_test,
+                              no_sbom_licenses_test,
+                              metadata_component_empty_links_cpe_test]}].
 
 init_per_suite(Config) ->
     application:load(rebar3_sbom),
@@ -173,17 +173,6 @@ init_per_testcase(default_author_test, Config) ->
     SBoMPath = ?config(sbom_path, Config),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
     {ok, _FinalState} = rebar3:run(State, Cmd),
-    {ok, File} = file:read_file(SBoMPath),
-    NewSBoMJSON = json:decode(File),
-    [{sbom_json, NewSBoMJSON} | Config];
-init_per_testcase(Testcase, Config)
-    when Testcase =:= no_sbom_manufacturer_test orelse
-         Testcase =:= no_sbom_licenses_test ->
-    State = init_rebar_state(Config, "basic_app"),
-    State2 = rebar_state:set(State, rebar3_sbom, []),
-    SBoMPath = ?config(sbom_path, Config),
-    Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
-    {ok, _FinalState} = rebar3:run(State2, Cmd),
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
@@ -263,18 +252,6 @@ default_author_test(Config) ->
     #{<<"authors">> := Authors} = Metadata,
     ?assertMatch([#{<<"name">> := <<"John Doe">>}], Authors).
 
-no_sbom_manufacturer_test(Config) ->
-    SBoMJSON = ?config(sbom_json, Config),
-    #{<<"metadata">> := Metadata} = SBoMJSON,
-    ?assertNotMatch(#{<<"manufacturer">> := _}, Metadata).
-
-no_sbom_licenses_test(Config) ->
-    SBoMJSON = ?config(sbom_json, Config),
-    % Get component licenses and check if metadata.licences matches with them
-    #{<<"metadata">> := #{<<"licenses">> := MetadataLicenses,
-      <<"component">> := #{<<"licenses">> := ComponentLicenses}}} = SBoMJSON,
-    ?assertMatch(ComponentLicenses, MetadataLicenses).
-
 empty_manufacturer_url_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"metadata">> := #{<<"manufacturer">> := Manufacturer}} = SBoMJSON,
@@ -294,11 +271,6 @@ metadata_component_hashes_test(Config) ->
     [Hash] = Hashes,
     ?assertMatch(#{<<"alg">> := <<"SHA-256">>,
                    <<"content">> := ExpectedHash}, Hash).
-
-metadata_component_empty_links_cpe_test(Config) ->
-    SBoMJSON = ?config(sbom_json, Config),
-    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
-    ?assertNotMatch(#{<<"cpe">> := _}, Component).
 
 %--- metadata group ---
 timestamp_test(Config) ->
@@ -471,6 +443,24 @@ timestamp_increases_test(Config) ->
     OldSysTime = calendar:rfc3339_to_system_time(binary_to_list(OldTs)),
     NewSysTime = calendar:rfc3339_to_system_time(binary_to_list(NewTs)),
     ?assert( OldSysTime < NewSysTime).
+
+%--- local_app group ---
+no_sbom_manufacturer_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := Metadata} = SBoMJSON,
+    ?assertNotMatch(#{<<"manufacturer">> := _}, Metadata).
+
+no_sbom_licenses_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    % Get component licenses and check if metadata.licences matches with them
+    #{<<"metadata">> := #{<<"licenses">> := MetadataLicenses,
+      <<"component">> := #{<<"licenses">> := ComponentLicenses}}} = SBoMJSON,
+    ?assertMatch(ComponentLicenses, MetadataLicenses).
+
+metadata_component_empty_links_cpe_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
+    ?assertNotMatch(#{<<"cpe">> := _}, Component).
 
 %--- Private -------------------------------------------------------------------
 get_app_dir(DataDir, AppName) ->
