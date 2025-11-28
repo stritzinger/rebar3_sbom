@@ -85,5 +85,5 @@ elixir_cpe_test(_) ->
     ?assertEqual(<<"cpe:2.3:a:elixir-lang:elixir:1.19.3:*:*:*:*:*:*:*">>, CPE).
 
 no_url_test(_) ->
-    CPE = rebar3_sbom_cpe:hex(<<"grisp">>, <<"1.0.0">>, undefined),
+    CPE = rebar3_sbom_cpe:hex(<<"non_hex_package">>, <<"1.0.0">>, undefined),
     ?assertEqual(undefined, CPE).

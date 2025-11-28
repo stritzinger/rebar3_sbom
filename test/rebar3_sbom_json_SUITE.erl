@@ -548,6 +548,16 @@ check_cpe_content(#{<<"name">> := <<"hex_core">>} = Component) ->
     check_cpe_format(Cpe),
     ?assertEqual(<<"cpe:", ?CPE_VERSION/bitstring, ":a:hex:hex_core:",
                    Version/bitstring, ":*:*:*:*:*:*:*">>, Cpe);
+check_cpe_content(#{<<"name">> := <<"grisp">>} = Component) ->
+    #{<<"version">> := Version, <<"cpe">> := Cpe} = Component,
+    check_cpe_format(Cpe),
+    ?assertEqual(<<"cpe:", ?CPE_VERSION/bitstring, ":a:grisp:grisp:",
+                   Version/bitstring, ":*:*:*:*:*:*:*">>, Cpe);
+check_cpe_content(#{<<"name">> := <<"meck">>} = Component) ->
+    #{<<"version">> := Version, <<"cpe">> := Cpe} = Component,
+    check_cpe_format(Cpe),
+    ?assertEqual(<<"cpe:", ?CPE_VERSION/bitstring, ":a:eproxus:meck:",
+                   Version/bitstring, ":*:*:*:*:*:*:*">>, Cpe);
 check_cpe_content(Component) ->
     #{<<"name">> := Name, <<"version">> := Version,
         <<"cpe">> := Cpe} = Component,
