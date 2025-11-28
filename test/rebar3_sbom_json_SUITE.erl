@@ -28,10 +28,12 @@
 
 % components group test cases
 -export([required_component_fields_test/1]).
+-export([all_deps_present_test/1]).
 -export([scope_test/1]).
 -export([component_hashes_test/1]).
 -export([component_licenses_test/1]).
 -export([component_purl_test/1]).
+-export([component_cpe_test/1]).
 
 % basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
@@ -64,6 +66,8 @@
 -define(HASH_CONTENT_REGEX, "^([a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128})$").
 -define(PURL_REGEX, "^pkg:[a-z][a-z0-9+.-]*/([^/@?#]+/)*[^/@?#]+(@[^?#]+)?(\\?[^#]+)?(#.+)?$").
 -define(TAR_REL_PATH, "/_build/default/rel/basic_app/basic_app-0.1.0.tar.gz").
+% Reference: https://csrc.nist.gov/schema/cpe/2.3/cpe-naming_2.3.xsd
+-define(CPE_REGEX, "^cpe:2\\.3:[aho\\*\\-](:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\*\\-]))(:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){4}$").
 
 %--- Common test functions -----------------------------------------------------
 
@@ -88,10 +92,12 @@ groups() -> [{basic_app, [], [required_fields_test,
                              component_test,
                              manufacturer_test]},
              {components, [], [required_component_fields_test,
+                               all_deps_present_test,
                                scope_test,
                                component_hashes_test,
                                component_licenses_test,
-                               component_purl_test]},
+                               component_purl_test,
+                               component_cpe_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]}].
@@ -111,11 +117,14 @@ init_per_group(basic_app, Config) ->
     PrivDir = ?config(priv_dir, Config),
     SBoMPath = filename:join(PrivDir, "bom.json"),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-a", "Jane Doe"],
-    {ok, _FinalState} = rebar3:run(State, Cmd),
+    {ok, FinalState} = rebar3:run(State, Cmd),
     {ok, File} = file:read_file(SBoMPath),
     SBoMJSON = json:decode(File),
+    AllDeps = lists:map(fun(Dep) -> atom_to_binary(Dep) end,
+                        rebar_state:get(FinalState, deps)),
     [{sbom_path, SBoMPath},
-     {sbom_json, SBoMJSON} | Config];
+     {sbom_json, SBoMJSON},
+     {all_deps, AllDeps} | Config];
 init_per_group(basic_app_with_sbom, Config) ->
     timer:sleep(1000), % makes sure that new generated TS must be different
     State = init_rebar_state(Config),
@@ -364,6 +373,18 @@ required_component_fields_test(Config) ->
         check_component_constraints(Component)
     end, Components).
 
+all_deps_present_test(Config) ->
+    AllDeps = ?config(all_deps, Config),
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    AllComponentNames = lists:map(fun(Component) ->
+        #{<<"name">> := Name} = Component,
+        Name
+    end, Components),
+    lists:foreach(fun(DeclaredDep) ->
+        ?assert(lists:member(DeclaredDep, AllComponentNames),
+                io_lib:format("Dependency ~s is missing from the SBoM", [DeclaredDep]))
+    end, AllDeps).
+
 scope_test(Config) ->
     #{<<"components">> := Components} = ?config(sbom_json, Config),
     lists:foreach(fun(Component) ->
@@ -394,6 +415,11 @@ component_purl_test(Config) ->
         check_purl_format(Purl),
         ?assertEqual(<<"pkg:hex/", Name/bitstring, "@", Version/bitstring>>, Purl)
     end, Components).
+
+
+component_cpe_test(Config) ->
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    lists:foreach(fun check_cpe_content/1, Components).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -513,3 +539,32 @@ get_tar_hash(PrivDir) ->
     {ok, Content} = file:read_file(PrivDir ++ ?TAR_REL_PATH),
     ComputedHash = crypto:hash(sha256, Content),
     iolist_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= ComputedHash]).
+
+check_cpe_format(Cpe) ->
+    ?assertNotEqual(nomatch, re:run(Cpe, ?CPE_REGEX)).
+
+check_cpe_content(#{<<"name">> := <<"hex_core">>} = Component) ->
+    #{<<"version">> := Version, <<"cpe">> := Cpe} = Component,
+    check_cpe_format(Cpe),
+    ?assertEqual(<<"cpe:", ?CPE_VERSION/bitstring, ":a:hex:hex_core:",
+                   Version/bitstring, ":*:*:*:*:*:*:*">>, Cpe);
+check_cpe_content(#{<<"name">> := <<"grisp">>} = Component) ->
+    #{<<"version">> := Version, <<"cpe">> := Cpe} = Component,
+    check_cpe_format(Cpe),
+    ?assertEqual(<<"cpe:", ?CPE_VERSION/bitstring, ":a:grisp:grisp:",
+                   Version/bitstring, ":*:*:*:*:*:*:*">>, Cpe);
+check_cpe_content(#{<<"name">> := <<"meck">>} = Component) ->
+    #{<<"version">> := Version, <<"cpe">> := Cpe} = Component,
+    check_cpe_format(Cpe),
+    ?assertEqual(<<"cpe:", ?CPE_VERSION/bitstring, ":a:eproxus:meck:",
+                   Version/bitstring, ":*:*:*:*:*:*:*">>, Cpe);
+check_cpe_content(Component) ->
+    #{<<"name">> := Name, <<"version">> := Version,
+        <<"cpe">> := Cpe} = Component,
+    check_cpe_format(Cpe),
+    CpeList = string:tokens(binary_to_list(Cpe), ":"),
+    [_, CpeVersion, Part, _, CpeProduct, CpeAppVersion | _] = CpeList,
+    ?assertEqual(binary_to_list(?CPE_VERSION), CpeVersion),
+    ?assertEqual("a", Part),
+    ?assertEqual(binary_to_list(Name), CpeProduct),
+    ?assertEqual(binary_to_list(Version), CpeAppVersion).

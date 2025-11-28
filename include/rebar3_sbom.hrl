@@ -6,6 +6,7 @@
 -define(PROVIDER, sbom).
 -define(DEPS, [lock]).
 -define(SPEC_VERSION, <<"1.6">>).
+-define(CPE_VERSION, <<"2.3">>).
 
 %--- Types ---------------------------------------------------------------------
 
@@ -63,6 +64,7 @@
     hashes = [] :: [#{alg := string(), hash := string()}],
     licenses = [] :: [#{name := string()} | #{id := string()}],
     externalReferences = [] :: [#{type := string(), url := string()}],
+    cpe :: string() | undefined,
     purl :: string()
 }).
 
