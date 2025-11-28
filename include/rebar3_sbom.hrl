@@ -17,6 +17,11 @@
 
 %--- Records -------------------------------------------------------------------
 
+-record(external_reference, {
+    type :: string(),
+    url :: string()
+}).
+
 % Alias Author, Contact
 -record(individual, {
     bom_ref :: bom_ref() | undefined,
@@ -63,7 +68,7 @@
     scope :: scope(),
     hashes = [] :: [#{alg := string(), hash := string()}],
     licenses = [] :: [#{name := string()} | #{id := string()}],
-    externalReferences = [] :: [#{type := string(), url := string()}],
+    externalReferences = [] :: [#external_reference{}],
     cpe :: string() | undefined,
     purl :: string()
 }).

@@ -89,11 +89,37 @@ CPE Generation
 
 The plugin automatically generates a CPE (Common Platform Enumeration) identifier for the main component (`metadata.component`) using the GitHub link from your project's `.app.src` file. If no GitHub link is present, the CPE field is omitted from the SBoM.
 
-To ensure CPE generation, add a GitHub link to your `.app.src` file:
+To ensure CPE generation, add a GitHub link to your `.app.src` file. For example:
+
 
     {application, my_app, [
         ...
         {links, [
             {"GitHub", "https://github.com/your-org/my_app"}
+        ]}
+    ]}.
+
+External References
+-------------------
+
+The plugin supports external references for components, which are automatically extracted from the `links` field in your `.app.src` file or from Hex metadata for dependencies.
+
+All standard CycloneDX external reference types are supported. Additionally, for convenience, the plugin supports common field names used by the Erlang/Elixir community, which are automatically mapped to their CycloneDX equivalents:
+
+- `"Homepage"` → `"website"`
+- `"Changelog"` → `"release-notes"`
+- `"Sponsor"` → `"support"`
+- `"Issues"` → `"issue-tracker"`
+
+You can use either the standard CycloneDX type names or the community convention names in your `.app.src` file:
+
+    {application, my_app, [
+        ...
+        {links, [
+            {"GitHub", "https://github.com/your-org/my_app"},
+            {"Homepage", "https://example.com"},
+            {"Changelog", "https://github.com/example/my_app/releases"},
+            {"Issues", "https://github.com/example/my_app/issues"},
+            {"Sponsor", "<your sponsor link>"}
         ]}
     ]}.

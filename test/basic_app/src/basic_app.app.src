@@ -11,7 +11,11 @@
     {modules, []},
     {licenses, ["Apache-2.0"]},
     {links, [
-        {"GitHub", "https://github.com/example-org/basic_app"}
+        {"GitHub", "https://github.com/example-org/basic_app"},
+        {"Homepage", "https://example.com"},
+        {"Changelog", "https://example.com/changelog"},
+        {"Sponsor", "https://example.com/sponsor"},
+        {"Issues", "https://example.com/issues"}
     ]},
     {maintainers, ["John Doe"]}
  ]}.

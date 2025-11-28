@@ -113,7 +113,7 @@ hash_to_json(#{alg := Alg, hash := Hash}) ->
 external_references_to_json(ExternalReferences) ->
     [external_reference_to_json(R) || R <- ExternalReferences].
 
-external_reference_to_json(#{type := Type, url := Url}) ->
+external_reference_to_json(#external_reference{type = Type, url = Url}) ->
     #{type => bin(Type), url => bin(Url)}.
 
 licenses_to_json(Licenses) ->
@@ -201,7 +201,7 @@ json_to_external_references(ExternalReferences) ->
     [json_to_external_reference(R) || R <- ExternalReferences].
 
 json_to_external_reference(#{<<"type">> := Type, <<"url">> := Url}) ->
-    #{type => str(Type), url => str(Url)}.
+    #external_reference{type = str(Type), url = str(Url)}.
 
 str(undefined) ->
     undefined;

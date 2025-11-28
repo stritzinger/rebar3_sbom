@@ -100,7 +100,8 @@ component_field(external_references = Field, RawComponent) ->
         [] ->
             [];
         References ->
-            [#{type => Type, url => Url} || {Type, Url} <- References]
+            [#external_reference{type = Type, url = Url} ||
+             {Type, Url} <- maps:to_list(References)]
     end;
 component_field(Field, RawComponent) ->
     case proplists:get_value(Field, RawComponent) of

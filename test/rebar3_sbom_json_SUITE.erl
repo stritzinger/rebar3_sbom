@@ -32,6 +32,7 @@
 -export([component_licenses_test/1]).
 -export([component_purl_test/1]).
 -export([component_cpe_test/1]).
+-export([component_external_references_test/1]).
 
 % basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
@@ -101,7 +102,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                                component_hashes_test,
                                component_licenses_test,
                                component_purl_test,
-                               component_cpe_test]},
+                               component_cpe_test,
+                               component_external_references_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]},
@@ -339,7 +341,20 @@ component_test(Config) ->
     ?assertMatch(#{<<"cpe">> := _}, Component,
                  "metadata.component.cpe is missing"),
     #{<<"cpe">> := Cpe} = Component,
-    ?assertEqual(<<"cpe:2.3:a:example-org:basic_app:0.1.0:*:*:*:*:*:*:*">>, Cpe).
+    ?assertEqual(<<"cpe:2.3:a:example-org:basic_app:0.1.0:*:*:*:*:*:*:*">>, Cpe),
+    ?assertMatch(#{<<"externalReferences">> := [_ | _]}, Component),
+    #{<<"externalReferences">> := ExternalReferences} = Component,
+    check_external_references_constraints(ExternalReferences),
+    ?assertEqual(4, length(ExternalReferences)),
+    ExpectedExternalReferences = [
+        #{<<"type">> => <<"website">>, <<"url">> => <<"https://example.com">>},
+        #{<<"type">> => <<"release-notes">>, <<"url">> => <<"https://example.com/changelog">>},
+        #{<<"type">> => <<"support">>, <<"url">> => <<"https://example.com/sponsor">>},
+        #{<<"type">> => <<"issue-tracker">>, <<"url">> => <<"https://example.com/issues">>}],
+    lists:foreach(fun(ExpectedExternalReference) ->
+        ?assert(lists:member(ExpectedExternalReference, ExternalReferences),
+                ExpectedExternalReference)
+    end, ExpectedExternalReferences).
 
 manufacturer_test(Config) ->
     #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),
@@ -413,10 +428,19 @@ component_purl_test(Config) ->
         ?assertEqual(<<"pkg:hex/", Name/bitstring, "@", Version/bitstring>>, Purl)
     end, Components).
 
-
 component_cpe_test(Config) ->
     #{<<"components">> := Components} = ?config(sbom_json, Config),
     lists:foreach(fun check_cpe_content/1, Components).
+
+component_external_references_test(Config) ->
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    lists:foreach(fun(Component) ->
+        #{<<"externalReferences">> := ExternalReferences} = Component,
+        check_external_references_constraints(ExternalReferences)
+        % TODO: check content ? Need to discuss about this
+        % We don't control the content of the deps
+        % A change in the content of the deps should not break the test
+    end, Components).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -583,3 +607,10 @@ check_cpe_content(Component) ->
     ?assertEqual("a", Part),
     ?assertEqual(binary_to_list(Name), CpeProduct),
     ?assertEqual(binary_to_list(Version), CpeAppVersion).
+
+check_external_references_constraints(ExternalReferences) ->
+    lists:foreach(fun(ExternalReference) ->
+        % TODO check that the type is valid
+        ?assertMatch(#{<<"type">> := _}, ExternalReference, "External reference type is missing"),
+        ?assertMatch(#{<<"url">> := _}, ExternalReference, "External reference url is missing")
+    end, ExternalReferences).

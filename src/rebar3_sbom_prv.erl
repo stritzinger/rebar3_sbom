@@ -133,14 +133,28 @@ get_github_link(HexMetadata, _) ->
     Links = proplists:get_value(<<"links">>, HexMetadata, []),
     proplists:get_value(<<"GitHub">>, Links, undefined).
 
+custom_mapping() ->
+    #{"Homepage" => "website",
+      "Changelog" => "release-notes",
+      "Sponsor" => "support",
+      "Issues" => "issue-tracker"}.
+
 find_references(Links) ->
-    lists:filtermap(
-        fun({Type, _}) ->
-                lists:member(Type, valid_external_reference_types());
-           (_) -> false
-        end,
-        Links
-    ).
+    CustomMapping = custom_mapping(),
+    lists:foldl(
+        fun({Type, Url}, Acc) ->
+            case maps:get(Type, CustomMapping, undefined) of
+                undefined ->
+                    case lists:member(Type, valid_external_reference_types()) of
+                        true ->
+                            Acc#{Type => Url};
+                        false ->
+                            Acc
+                    end;
+                MappedType ->
+                    Acc#{MappedType => Url}
+            end
+        end, #{}, Links).
 
 valid_external_reference_types() ->
     % https://cyclonedx.org/docs/1.6/json/#metadata_component_externalReferences_items_type
