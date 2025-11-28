@@ -342,7 +342,11 @@ component_test(Config) ->
                  "metadata.component.licenses[0].license.id"),
     check_purl_format(Purl),
     ?assertEqual(<<"pkg:hex/basic_app@0.1.0">>, Purl,
-                 "metadata.component.purl").
+                 "metadata.component.purl"),
+    ?assertMatch(#{<<"cpe">> := _}, Component,
+                 "metadata.component.cpe is missing"),
+    #{<<"cpe">> := Cpe} = Component,
+    ?assertEqual(<<"cpe:2.3:a:basic_app:basic_app:0.1.0:*:*:*:*:*:*:*">>, Cpe).
 
 manufacturer_test(Config) ->
     #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),
