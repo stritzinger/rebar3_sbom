@@ -81,11 +81,14 @@ dep_info(Dep) ->
     ExternalReferences = case proplists:get_value(links, Details) of
         undefined ->
             undefined;
-        Links ->
-            find_references(Links)
+        ExternalLinks ->
+            find_references(ExternalLinks)
     end,
     % remove duplicates, if any
     Licenses = lists:usort(Licenses0 ++ HexMetadataLicenses),
+    Links = proplists:get_value(links, Details, []),
+    GitHubLink = get_github_link(HexMetadata, Links),
+    CPE = rebar3_sbom_cpe:hex(Name, list_to_binary(Version), GitHubLink),
     Common =
         [
          {authors, proplists:get_value(maintainers, Details, [])},
@@ -94,7 +97,7 @@ dep_info(Dep) ->
          {external_references, ExternalReferences},
          {dependencies, Deps},
          {scope, required},
-         {cpe, cpe(HexMetadata, Name, list_to_binary(Version))}
+         {cpe, CPE}
         ],
     dep_info(Name, Version, Source, Common).
 
@@ -116,14 +119,14 @@ hex_metadata_licenses(HexMetadata) ->
     HexMetadataLicenses = proplists:get_value(<<"licenses">>, HexMetadata, []),
     [binary_to_list(HexMetadataLicense) || HexMetadataLicense <- HexMetadataLicenses].
 
-cpe(HexMetadata, Name, Version) ->
+-spec get_github_link(HexMetadata, Links) -> binary() when
+    HexMetadata :: [{binary(), binary()}],
+    Links :: [{string(), string()}].
+get_github_link([], Links) ->
+    list_to_binary(proplists:get_value("GitHub", Links, undefined));
+get_github_link(HexMetadata, _) ->
     Links = proplists:get_value(<<"links">>, HexMetadata, []),
-    case lists:keyfind(<<"GitHub">>, 1, Links) of
-        {_, Url} ->
-            rebar3_sbom_cpe:hex(Name, Version, Url);
-        false ->
-            rebar3_sbom_cpe:hex(Name, Version, undefined)
-    end.
+    proplists:get_value(<<"GitHub">>, Links, undefined).
 
 find_references(Links) ->
     lists:filtermap(

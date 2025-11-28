@@ -346,7 +346,7 @@ component_test(Config) ->
     ?assertMatch(#{<<"cpe">> := _}, Component,
                  "metadata.component.cpe is missing"),
     #{<<"cpe">> := Cpe} = Component,
-    ?assertEqual(<<"cpe:2.3:a:basic_app:basic_app:0.1.0:*:*:*:*:*:*:*">>, Cpe).
+    ?assertEqual(<<"cpe:2.3:a:example-org:basic_app:0.1.0:*:*:*:*:*:*:*">>, Cpe).
 
 manufacturer_test(Config) ->
     #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),

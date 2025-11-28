@@ -10,6 +10,8 @@
     {env, []},
     {modules, []},
     {licenses, ["Apache-2.0"]},
-    {links, []},
+    {links, [
+        {"GitHub", "https://github.com/example-org/basic_app"}
+    ]},
     {maintainers, ["John Doe"]}
  ]}.
