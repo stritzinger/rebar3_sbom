@@ -106,17 +106,20 @@ The plugin supports external references for components, which are automatically 
 
 All standard CycloneDX external reference types are supported. Additionally, for convenience, the plugin supports common field names used by the Erlang/Elixir community, which are automatically mapped to their CycloneDX equivalents:
 
+- `"GitHub"` → `"vcs"`
 - `"Homepage"` → `"website"`
 - `"Changelog"` → `"release-notes"`
 - `"Sponsor"` → `"support"`
 - `"Issues"` → `"issue-tracker"`
+
+**Note:** The plugin treats the names (i.e., `"Homepage"`, `"GitHub"`, etc.) in the `links` field as case-insensitive, so `"homepage"` and `"HOMEPAGE"` will also map to `"website"`, for example.
 
 You can use either the standard CycloneDX type names or the community convention names in your `.app.src` file:
 
     {application, my_app, [
         ...
         {links, [
-            {"GitHub", "https://github.com/your-org/my_app"},
+            {"GitHub", "https://github.com/example/my_app"},
             {"Homepage", "https://example.com"},
             {"Changelog", "https://github.com/example/my_app/releases"},
             {"Issues", "https://github.com/example/my_app/issues"},

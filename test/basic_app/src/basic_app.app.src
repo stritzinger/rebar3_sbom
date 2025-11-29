@@ -15,7 +15,8 @@
         {"Homepage", "https://example.com"},
         {"Changelog", "https://example.com/changelog"},
         {"Sponsor", "https://example.com/sponsor"},
-        {"Issues", "https://example.com/issues"}
+        {"Issues", "https://example.com/issues"},
+        {"documentation", "https://example.com/documentation"}
     ]},
     {maintainers, ["John Doe"]}
  ]}.

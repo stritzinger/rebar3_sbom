@@ -134,20 +134,22 @@ get_github_link(HexMetadata, _) ->
     proplists:get_value(<<"GitHub">>, Links, undefined).
 
 custom_mapping() ->
-    #{"Homepage" => "website",
-      "Changelog" => "release-notes",
-      "Sponsor" => "support",
-      "Issues" => "issue-tracker"}.
+    #{"github" => "vcs",
+      "homepage" => "website",
+      "changelog" => "release-notes",
+      "sponsor" => "support",
+      "issues" => "issue-tracker"}.
 
 find_references(Links) ->
     CustomMapping = custom_mapping(),
     lists:foldl(
         fun({Type, Url}, Acc) ->
-            case maps:get(Type, CustomMapping, undefined) of
+            LowerType = string:to_lower(Type),
+            case maps:get(LowerType, CustomMapping, undefined) of
                 undefined ->
-                    case lists:member(Type, valid_external_reference_types()) of
+                    case lists:member(LowerType, valid_external_reference_types()) of
                         true ->
-                            Acc#{Type => Url};
+                            Acc#{LowerType => Url};
                         false ->
                             Acc
                     end;
@@ -167,7 +169,8 @@ valid_external_reference_types() ->
      "pentest-report", "static-analysis-report", "dynamic-analysis-report",
      "runtime-analysis-report", "component-analysis-report", "maturity-report",
      "certification-report", "codified-infrastructure", "quality-metrics",
-     "poam", "electronic-signature", "digital-signature", "rfc-9116", "other"].
+     "poam", "electronic-signature", "digital-signature", "rfc-9116",
+     "patent", "patent-family", "patent-assertion", "citation", "other"].
 
 dep_info(_Name, _Version, {pkg, Name, Version, Sha256}, Common) ->
     [

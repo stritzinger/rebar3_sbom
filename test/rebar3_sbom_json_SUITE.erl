@@ -72,6 +72,20 @@
 -define(TAR_REL_PATH, "/_build/default/rel/basic_app/basic_app-0.1.0.tar.gz").
 % Reference: https://csrc.nist.gov/schema/cpe/2.3/cpe-naming_2.3.xsd
 -define(CPE_REGEX, "^cpe:2\\.3:[aho\\*\\-](:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\*\\-]))(:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){4}$").
+-define(VALID_EXTERNAL_REFERENCE_TYPES,
+        ["vcs", "issue-tracker", "website", "advisories", "bom", "mailing-list",
+         "social", "chat", "documentation", "support", "source-distribution",
+         "distribution", "distribution-intake", "license", "build-meta",
+         "build-system", "release-notes", "security-contact", "model-card",
+         "log", "configuration", "evidence", "formulation", "attestation",
+         "threat-model", "adversary-model", "risk-assessment",
+         "vulnerability-assertion", "exploitability-statement",
+         "pentest-report", "static-analysis-report", "dynamic-analysis-report",
+         "runtime-analysis-report", "component-analysis-report",
+         "maturity-report", "certification-report", "codified-infrastructure",
+         "quality-metrics", "poam", "electronic-signature", "digital-signature",
+         "rfc-9116", "patent", "patent-family", "patent-assertion", "citation",
+         "other"]).
 
 -define(BASIC_APP_SBOM, "basic_app_sbom.json").
 -define(LOCAL_APP_SBOM, "local_app_sbom.json").
@@ -345,16 +359,18 @@ component_test(Config) ->
     ?assertMatch(#{<<"externalReferences">> := [_ | _]}, Component),
     #{<<"externalReferences">> := ExternalReferences} = Component,
     check_external_references_constraints(ExternalReferences),
-    ?assertEqual(4, length(ExternalReferences)),
     ExpectedExternalReferences = [
+        #{<<"type">> => <<"vcs">>, <<"url">> => <<"https://github.com/example-org/basic_app">>},
         #{<<"type">> => <<"website">>, <<"url">> => <<"https://example.com">>},
         #{<<"type">> => <<"release-notes">>, <<"url">> => <<"https://example.com/changelog">>},
         #{<<"type">> => <<"support">>, <<"url">> => <<"https://example.com/sponsor">>},
-        #{<<"type">> => <<"issue-tracker">>, <<"url">> => <<"https://example.com/issues">>}],
+        #{<<"type">> => <<"issue-tracker">>, <<"url">> => <<"https://example.com/issues">>},
+        #{<<"type">> => <<"documentation">>, <<"url">> => <<"https://example.com/documentation">>}],
     lists:foreach(fun(ExpectedExternalReference) ->
         ?assert(lists:member(ExpectedExternalReference, ExternalReferences),
                 ExpectedExternalReference)
-    end, ExpectedExternalReferences).
+    end, ExpectedExternalReferences),
+    ?assertEqual(6, length(ExternalReferences)).
 
 manufacturer_test(Config) ->
     #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),
@@ -612,5 +628,9 @@ check_external_references_constraints(ExternalReferences) ->
     lists:foreach(fun(ExternalReference) ->
         % TODO check that the type is valid
         ?assertMatch(#{<<"type">> := _}, ExternalReference, "External reference type is missing"),
+        #{<<"type">> := Type} = ExternalReference,
+        TypeString = binary_to_list(Type),
+        ?assert(lists:member(TypeString, ?VALID_EXTERNAL_REFERENCE_TYPES),
+                "External reference type '" ++ TypeString ++ "' is invalid"),
         ?assertMatch(#{<<"url">> := _}, ExternalReference, "External reference url is missing")
     end, ExternalReferences).
