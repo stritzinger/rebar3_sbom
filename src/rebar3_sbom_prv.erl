@@ -4,6 +4,13 @@
 
 -include("rebar3_sbom.hrl").
 
+%--- Macros --------------------------------------------------------------------
+-define(CUSTOM_MAPPING, #{"github" => "vcs",
+                          "homepage" => "website",
+                          "changelog" => "release-notes",
+                          "sponsor" => "support",
+                          "issues" => "issue-tracker"}).
+
 %% ===================================================================
 %% Public API
 %% ===================================================================
@@ -133,19 +140,11 @@ get_github_link(HexMetadata, _) ->
     Links = proplists:get_value(<<"links">>, HexMetadata, []),
     proplists:get_value(<<"GitHub">>, Links, undefined).
 
-custom_mapping() ->
-    #{"github" => "vcs",
-      "homepage" => "website",
-      "changelog" => "release-notes",
-      "sponsor" => "support",
-      "issues" => "issue-tracker"}.
-
 find_references(Links) ->
-    CustomMapping = custom_mapping(),
     lists:foldl(
         fun({Type, Url}, Acc) ->
             LowerType = string:to_lower(Type),
-            case maps:get(LowerType, CustomMapping, undefined) of
+            case maps:get(LowerType, ?CUSTOM_MAPPING, undefined) of
                 undefined ->
                     case lists:member(LowerType, valid_external_reference_types()) of
                         true ->
