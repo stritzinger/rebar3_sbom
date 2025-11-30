@@ -210,6 +210,13 @@ dep_info(Name, DepVersion, {git, Git, GitRef}, Common) ->
 dep_info(Name, Version, {git_subdir, Git, Ref, _Dir}, Common) ->
     dep_info(Name, Version, {git, Git, Ref}, Common);
 
+dep_info(Name, Version, checkout, Common) ->
+    [
+     {name, Name},
+     {version, Version},
+     {purl, rebar3_sbom_purl:local(Name, Version)}
+    | Common ];
+
 dep_info(Name, Version, root_app, Common) ->
     Purl = rebar3_sbom_purl:hex(Name, Version),
     [
