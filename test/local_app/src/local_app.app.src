@@ -1,0 +1,14 @@
+{application, local_app, [
+    {description, "Application with local dependencies for testing rebar3_sbom"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {local_app_app, []}},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]},
+    {links, []}
+ ]}.

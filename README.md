@@ -83,3 +83,17 @@ Hash Generation
 For the main component (`metadata.component`), the plugin computes the SHA-256 hash of the release tarball (`<name>-<version>.tar.gz`) found in the release directory.
 
 If the tarball does not exist (e.g., because `rebar3 tar` hasn't been run), no hash is included for the main component, and a warning is logged.
+
+CPE Generation
+--------------
+
+The plugin automatically generates a CPE (Common Platform Enumeration) identifier for the main component (`metadata.component`) using the GitHub link from your project's `.app.src` file. If no GitHub link is present, the CPE field is omitted from the SBoM.
+
+To ensure CPE generation, add a GitHub link to your `.app.src` file:
+
+    {application, my_app, [
+        ...
+        {links, [
+            {"GitHub", "https://github.com/your-org/my_app"}
+        ]}
+    ]}.
