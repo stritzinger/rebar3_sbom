@@ -109,8 +109,8 @@ All standard CycloneDX external reference types are supported. Additionally, for
 - `"GitHub"` → `"vcs"`
 - `"Homepage"` → `"website"`
 - `"Changelog"` → `"release-notes"`
-- `"Sponsor"` → `"support"`
 - `"Issues"` → `"issue-tracker"`
+- `"Documentation"` → `"documentation"`
 
 **Note:** The plugin treats the names (i.e., `"Homepage"`, `"GitHub"`, etc.) in the `links` field as case-insensitive, so `"homepage"` and `"HOMEPAGE"` will also map to `"website"`, for example.
 
@@ -123,6 +123,6 @@ You can use either the standard CycloneDX type names or the community convention
             {"Homepage", "https://example.com"},
             {"Changelog", "https://github.com/example/my_app/releases"},
             {"Issues", "https://github.com/example/my_app/issues"},
-            {"Sponsor", "<your sponsor link>"}
+            {"Documentation", "https://example.com/documentation"}
         ]}
     ]}.

@@ -14,6 +14,7 @@
         {"GitHub", "https://github.com/example-org/basic_app"},
         {"Homepage", "https://example.com"},
         {"Changelog", "https://example.com/changelog"},
+        {"Releases", "https://example.com/releases"},
         {"Sponsor", "https://example.com/sponsor"},
         {"Issues", "https://example.com/issues"},
         {"documentation", "https://example.com/documentation"}

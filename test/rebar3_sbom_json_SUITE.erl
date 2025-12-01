@@ -288,6 +288,14 @@ metadata_component_hashes_test(Config) ->
     ?assertMatch(#{<<"alg">> := <<"SHA-256">>,
                    <<"content">> := ExpectedHash}, Hash).
 
+% TODO: Use it after rebase
+external_references_fallback_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
+    #{<<"externalReferences">> := ExternalReferences} = Component,
+    ?assertNotMatch([#{<<"type">> := <<"release-notes">>, <<"url">> := <<"https://example.com/releases">>}], ExternalReferences),
+    ?assertMatch([#{<<"type">> := <<"release-notes">>, <<"url">> := <<"https://example.com/changelog">>}], ExternalReferences).
+
 %--- metadata group ---
 timestamp_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
@@ -362,15 +370,14 @@ component_test(Config) ->
     ExpectedExternalReferences = [
         #{<<"type">> => <<"vcs">>, <<"url">> => <<"https://github.com/example-org/basic_app">>},
         #{<<"type">> => <<"website">>, <<"url">> => <<"https://example.com">>},
-        #{<<"type">> => <<"release-notes">>, <<"url">> => <<"https://example.com/changelog">>},
-        #{<<"type">> => <<"support">>, <<"url">> => <<"https://example.com/sponsor">>},
+        #{<<"type">> => <<"release-notes">>, <<"url">> => <<"https://example.com/releases">>},
         #{<<"type">> => <<"issue-tracker">>, <<"url">> => <<"https://example.com/issues">>},
         #{<<"type">> => <<"documentation">>, <<"url">> => <<"https://example.com/documentation">>}],
     lists:foreach(fun(ExpectedExternalReference) ->
         ?assert(lists:member(ExpectedExternalReference, ExternalReferences),
                 ExpectedExternalReference)
     end, ExpectedExternalReferences),
-    ?assertEqual(6, length(ExternalReferences)).
+    ?assertEqual(5, length(ExternalReferences)).
 
 manufacturer_test(Config) ->
     #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),

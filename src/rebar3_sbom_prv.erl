@@ -7,8 +7,8 @@
 %--- Macros --------------------------------------------------------------------
 -define(CUSTOM_MAPPING, #{"github" => "vcs",
                           "homepage" => "website",
+                          "releases" => "release-notes",
                           "changelog" => "release-notes",
-                          "sponsor" => "support",
                           "issues" => "issue-tracker"}).
 
 %% ===================================================================
@@ -152,6 +152,11 @@ find_references(Links) ->
                         false ->
                             Acc
                     end;
+                MappedType when LowerType =:= "changelog" andalso
+                                is_map_key("release-note", Acc) ->
+                    % changelog is a fallback for release-note.
+                    % We don't overwrite the release-note if it already exists.
+                    Acc;
                 MappedType ->
                     Acc#{MappedType => Url}
             end
