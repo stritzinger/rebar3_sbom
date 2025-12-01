@@ -32,6 +32,7 @@
 -export([component_licenses_test/1]).
 -export([component_purl_test/1]).
 -export([component_cpe_test/1]).
+-export([component_external_references_test/1]).
 
 % basic app with SBoM group test cases
 -export([serial_number_change_test/1]).
@@ -42,6 +43,7 @@
 -export([no_sbom_manufacturer_test/1]).
 -export([no_sbom_licenses_test/1]).
 -export([metadata_component_empty_links_cpe_test/1]).
+-export([external_references_fallback_test/1]).
 
 % Includes
 -include_lib("common_test/include/ct.hrl").
@@ -71,6 +73,20 @@
 -define(TAR_REL_PATH, "/_build/default/rel/basic_app/basic_app-0.1.0.tar.gz").
 % Reference: https://csrc.nist.gov/schema/cpe/2.3/cpe-naming_2.3.xsd
 -define(CPE_REGEX, "^cpe:2\\.3:[aho\\*\\-](:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\*\\-]))(:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){4}$").
+-define(VALID_EXTERNAL_REFERENCE_TYPES,
+        ["vcs", "issue-tracker", "website", "advisories", "bom", "mailing-list",
+         "social", "chat", "documentation", "support", "source-distribution",
+         "distribution", "distribution-intake", "license", "build-meta",
+         "build-system", "release-notes", "security-contact", "model-card",
+         "log", "configuration", "evidence", "formulation", "attestation",
+         "threat-model", "adversary-model", "risk-assessment",
+         "vulnerability-assertion", "exploitability-statement",
+         "pentest-report", "static-analysis-report", "dynamic-analysis-report",
+         "runtime-analysis-report", "component-analysis-report",
+         "maturity-report", "certification-report", "codified-infrastructure",
+         "quality-metrics", "poam", "electronic-signature", "digital-signature",
+         "rfc-9116", "patent", "patent-family", "patent-assertion", "citation",
+         "other"]).
 
 -define(BASIC_APP_SBOM, "basic_app_sbom.json").
 -define(LOCAL_APP_SBOM, "local_app_sbom.json").
@@ -101,13 +117,15 @@ groups() -> [{basic_app, [], [required_fields_test,
                                component_hashes_test,
                                component_licenses_test,
                                component_purl_test,
-                               component_cpe_test]},
+                               component_cpe_test,
+                               component_external_references_test]},
              {basic_app_with_sbom, [], [serial_number_change_test,
                                         version_increment_test,
                                         timestamp_increases_test]},
              {local_app, [], [no_sbom_manufacturer_test,
                               no_sbom_licenses_test,
-                              metadata_component_empty_links_cpe_test]}].
+                              metadata_component_empty_links_cpe_test,
+                              external_references_fallback_test]}].
 
 init_per_suite(Config) ->
     application:load(rebar3_sbom),
@@ -339,7 +357,21 @@ component_test(Config) ->
     ?assertMatch(#{<<"cpe">> := _}, Component,
                  "metadata.component.cpe is missing"),
     #{<<"cpe">> := Cpe} = Component,
-    ?assertEqual(<<"cpe:2.3:a:example-org:basic_app:0.1.0:*:*:*:*:*:*:*">>, Cpe).
+    ?assertEqual(<<"cpe:2.3:a:example-org:basic_app:0.1.0:*:*:*:*:*:*:*">>, Cpe),
+    ?assertMatch(#{<<"externalReferences">> := [_ | _]}, Component),
+    #{<<"externalReferences">> := ExternalReferences} = Component,
+    check_external_references_constraints(ExternalReferences),
+    ExpectedExternalReferences = [
+        #{<<"type">> => <<"vcs">>, <<"url">> => <<"https://github.com/example-org/basic_app">>},
+        #{<<"type">> => <<"website">>, <<"url">> => <<"https://example.com">>},
+        #{<<"type">> => <<"release-notes">>, <<"url">> => <<"https://example.com/releases">>},
+        #{<<"type">> => <<"issue-tracker">>, <<"url">> => <<"https://example.com/issues">>},
+        #{<<"type">> => <<"documentation">>, <<"url">> => <<"https://example.com/documentation">>}],
+    lists:foreach(fun(ExpectedExternalReference) ->
+        ?assert(lists:member(ExpectedExternalReference, ExternalReferences),
+                ExpectedExternalReference)
+    end, ExpectedExternalReferences),
+    ?assertEqual(5, length(ExternalReferences)).
 
 manufacturer_test(Config) ->
     #{<<"manufacturer">> := Manufacturer} = ?config(metadata, Config),
@@ -413,10 +445,19 @@ component_purl_test(Config) ->
         ?assertEqual(<<"pkg:hex/", Name/bitstring, "@", Version/bitstring>>, Purl)
     end, Components).
 
-
 component_cpe_test(Config) ->
     #{<<"components">> := Components} = ?config(sbom_json, Config),
     lists:foreach(fun check_cpe_content/1, Components).
+
+component_external_references_test(Config) ->
+    #{<<"components">> := Components} = ?config(sbom_json, Config),
+    lists:foreach(fun(Component) ->
+        #{<<"externalReferences">> := ExternalReferences} = Component,
+        check_external_references_constraints(ExternalReferences)
+        % TODO: check content ? Need to discuss about this
+        % We don't control the content of the deps
+        % A change in the content of the deps should not break the test
+    end, Components).
 
 %--- basic_app_with_sbom group ---
 serial_number_change_test(Config) ->
@@ -461,6 +502,12 @@ metadata_component_empty_links_cpe_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
     ?assertNotMatch(#{<<"cpe">> := _}, Component).
+
+external_references_fallback_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
+    #{<<"externalReferences">> := ExternalReferences} = Component,
+    ?assertMatch([#{<<"type">> := <<"release-notes">>, <<"url">> := <<"https://example.com/changelog">>}], ExternalReferences).
 
 %--- Private -------------------------------------------------------------------
 get_app_dir(DataDir, AppName) ->
@@ -583,3 +630,14 @@ check_cpe_content(Component) ->
     ?assertEqual("a", Part),
     ?assertEqual(binary_to_list(Name), CpeProduct),
     ?assertEqual(binary_to_list(Version), CpeAppVersion).
+
+check_external_references_constraints(ExternalReferences) ->
+    lists:foreach(fun(ExternalReference) ->
+        % TODO check that the type is valid
+        ?assertMatch(#{<<"type">> := _}, ExternalReference, "External reference type is missing"),
+        #{<<"type">> := Type} = ExternalReference,
+        TypeString = binary_to_list(Type),
+        ?assert(lists:member(TypeString, ?VALID_EXTERNAL_REFERENCE_TYPES),
+                "External reference type '" ++ TypeString ++ "' is invalid"),
+        ?assertMatch(#{<<"url">> := _}, ExternalReference, "External reference url is missing")
+    end, ExternalReferences).

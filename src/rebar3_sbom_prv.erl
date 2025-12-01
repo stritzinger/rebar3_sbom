@@ -4,6 +4,13 @@
 
 -include("rebar3_sbom.hrl").
 
+%--- Macros --------------------------------------------------------------------
+-define(CUSTOM_MAPPING, #{"github" => "vcs",
+                          "homepage" => "website",
+                          "releases" => "release-notes",
+                          "changelog" => "release-notes",
+                          "issues" => "issue-tracker"}).
+
 %% ===================================================================
 %% Public API
 %% ===================================================================
@@ -134,13 +141,26 @@ get_github_link(HexMetadata, _) ->
     proplists:get_value(<<"GitHub">>, Links, undefined).
 
 find_references(Links) ->
-    lists:filtermap(
-        fun({Type, _}) ->
-                lists:member(Type, valid_external_reference_types());
-           (_) -> false
-        end,
-        Links
-    ).
+    lists:foldl(
+        fun({Type, Url}, Acc) ->
+            LowerType = string:to_lower(Type),
+            case maps:get(LowerType, ?CUSTOM_MAPPING, undefined) of
+                undefined ->
+                    case lists:member(LowerType, valid_external_reference_types()) of
+                        true ->
+                            Acc#{LowerType => Url};
+                        false ->
+                            Acc
+                    end;
+                _ when LowerType =:= "changelog" andalso
+                                is_map_key("release-note", Acc) ->
+                    % changelog is a fallback for release-note.
+                    % We don't overwrite the release-note if it already exists.
+                    Acc;
+                MappedType ->
+                    Acc#{MappedType => Url}
+            end
+        end, #{}, Links).
 
 valid_external_reference_types() ->
     % https://cyclonedx.org/docs/1.6/json/#metadata_component_externalReferences_items_type
@@ -153,7 +173,8 @@ valid_external_reference_types() ->
      "pentest-report", "static-analysis-report", "dynamic-analysis-report",
      "runtime-analysis-report", "component-analysis-report", "maturity-report",
      "certification-report", "codified-infrastructure", "quality-metrics",
-     "poam", "electronic-signature", "digital-signature", "rfc-9116", "other"].
+     "poam", "electronic-signature", "digital-signature", "rfc-9116",
+     "patent", "patent-family", "patent-assertion", "citation", "other"].
 
 dep_info(_Name, _Version, {pkg, Name, Version, Sha256}, Common) ->
     [

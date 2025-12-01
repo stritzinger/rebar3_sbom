@@ -97,7 +97,7 @@ license_to_xml(#{name := Name}) ->
 license_to_xml(#{id := Id}) ->
     {license, [{id, [Id]}]}.
 
-external_reference_to_xml(#{type := Type, url := Url}) ->
+external_reference_to_xml(#external_reference{type = Type, url = Url}) ->
     {reference, [{type, Type}], [{url, [Url]}]}.
 
 dependency_to_xml(Dependency) ->
@@ -157,7 +157,7 @@ xml_to_hash(HashElement) ->
 xml_to_external_reference(ExternalReferenceElement) ->
     [#xmlAttribute{value = Type}] = xpath("/reference/@type", ExternalReferenceElement),
     [#xmlText{value = Url}] = xpath("/reference/url/text()", ExternalReferenceElement),
-    #{type => Type, url => Url}.
+    #external_reference{type = Type, url = Url}.
 
 xml_to_license(LicenseElement) ->
     case xpath("/license/id/text()", LicenseElement) of
