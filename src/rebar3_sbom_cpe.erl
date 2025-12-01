@@ -30,6 +30,8 @@
     Version :: bitstring(),
     Url :: bitstring() | undefined,
     CPE :: bitstring().
+hex(Name, undefined, Url) ->
+    hex(Name, <<"*">>, Url);
 hex(<<"hex_core">>, Version, _) ->
     <<?CPE_PREFIX/binary, ":", ?CPE_PART_APPLICATION/binary,
       ":hex:hex_core:", Version/bitstring, ?CPE_POSTFIX/binary>>;
