@@ -43,6 +43,7 @@
 -export([no_sbom_manufacturer_test/1]).
 -export([no_sbom_licenses_test/1]).
 -export([metadata_component_empty_links_cpe_test/1]).
+-export([external_references_fallback_test/1]).
 
 % Includes
 -include_lib("common_test/include/ct.hrl").
@@ -123,7 +124,8 @@ groups() -> [{basic_app, [], [required_fields_test,
                                         timestamp_increases_test]},
              {local_app, [], [no_sbom_manufacturer_test,
                               no_sbom_licenses_test,
-                              metadata_component_empty_links_cpe_test]}].
+                              metadata_component_empty_links_cpe_test,
+                              external_references_fallback_test]}].
 
 init_per_suite(Config) ->
     application:load(rebar3_sbom),
@@ -287,14 +289,6 @@ metadata_component_hashes_test(Config) ->
     [Hash] = Hashes,
     ?assertMatch(#{<<"alg">> := <<"SHA-256">>,
                    <<"content">> := ExpectedHash}, Hash).
-
-% TODO: Use it after rebase
-external_references_fallback_test(Config) ->
-    SBoMJSON = ?config(sbom_json, Config),
-    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
-    #{<<"externalReferences">> := ExternalReferences} = Component,
-    ?assertNotMatch([#{<<"type">> := <<"release-notes">>, <<"url">> := <<"https://example.com/releases">>}], ExternalReferences),
-    ?assertMatch([#{<<"type">> := <<"release-notes">>, <<"url">> := <<"https://example.com/changelog">>}], ExternalReferences).
 
 %--- metadata group ---
 timestamp_test(Config) ->
@@ -508,6 +502,12 @@ metadata_component_empty_links_cpe_test(Config) ->
     SBoMJSON = ?config(sbom_json, Config),
     #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
     ?assertNotMatch(#{<<"cpe">> := _}, Component).
+
+external_references_fallback_test(Config) ->
+    SBoMJSON = ?config(sbom_json, Config),
+    #{<<"metadata">> := #{<<"component">> := Component}} = SBoMJSON,
+    #{<<"externalReferences">> := ExternalReferences} = Component,
+    ?assertMatch([#{<<"type">> := <<"release-notes">>, <<"url">> := <<"https://example.com/changelog">>}], ExternalReferences).
 
 %--- Private -------------------------------------------------------------------
 get_app_dir(DataDir, AppName) ->

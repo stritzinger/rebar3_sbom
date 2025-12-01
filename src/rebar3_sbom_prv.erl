@@ -152,7 +152,7 @@ find_references(Links) ->
                         false ->
                             Acc
                     end;
-                MappedType when LowerType =:= "changelog" andalso
+                _ when LowerType =:= "changelog" andalso
                                 is_map_key("release-note", Acc) ->
                     % changelog is a fallback for release-note.
                     % We don't overwrite the release-note if it already exists.
