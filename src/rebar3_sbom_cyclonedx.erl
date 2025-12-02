@@ -18,12 +18,15 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, App, Plugin, Serial, MetadataInfo
     {AppInfo, RawComponents} = App,
     {PluginInfo, PluginDepsInfo} = Plugin,
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
-    ValidPluginDepsInfo = lists:filter(fun(E) -> E =/= undefined end, PluginDepsInfo),
+    ValidPluginDepsInfo = lists:filter(
+        fun(E) ->
+            E =/= undefined andalso proplists:get_value(name, E) =/= <<"rebar3_sbom">>
+        end, PluginDepsInfo),
     AllDeps = dependencies(ValidRawComponents) ++ dependencies(ValidPluginDepsInfo),
     SBoM = #sbom{
         serial = Serial,
         metadata = metadata(AppInfo, PluginInfo, MetadataInfo),
-        components = components(ValidRawComponents),
+        components = components(ValidRawComponents) ++ components(ValidPluginDepsInfo),
         dependencies = [dependency(AppInfo), dependency(PluginInfo) | AllDeps]
     },
     try
