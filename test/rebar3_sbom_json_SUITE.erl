@@ -238,11 +238,10 @@ init_per_group(metadata, Config) ->
     [{metadata, Metadata} | Config];
 init_per_group(local_app, Config) ->
     State = init_rebar_state(Config, "local_app"),
-    StateWithFakePluginDep = add_fake_plugin_dep(State),
     PrivDir = ?config(priv_dir, Config),
     SBoMPath = filename:join(PrivDir, ?LOCAL_APP_SBOM),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
-    {ok, _FinalState} = rebar3:run(StateWithFakePluginDep, Cmd),
+    {ok, _FinalState} = rebar3:run(State, Cmd),
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
@@ -712,14 +711,17 @@ init_rebar_state(Config, AppName) ->
     ]),
     RebarConfig = rebar_config:consult(AppDir),
     State2 = rebar_state:new(State, RebarConfig, AppDir),
-    {ok, NewState} = rebar3_sbom_prv:init(State2),
-    NewState.
+    {ok, State3} = rebar3_sbom_prv:init(State2),
+    add_fake_plugin_dep(State3, DataDir).
 
 build_dir_path(PrivDir, AppName) ->
     filename:join([PrivDir, "_build_" ++ AppName]).
 
-add_fake_plugin_dep(State) ->
-    {ok, FakePluginEntry} = rebar_app_info:new("rebar3_sbom", "0.1.0"),
+add_fake_plugin_dep(State, DataDir) ->
+    SplitDataDir = filename:split(DataDir),
+    [_ | ReversedPluginDir] = lists:dropwhile(fun(Dir) -> Dir =/= "_build" end, lists:reverse(SplitDataDir)),
+    PluginDir = filename:join(lists:reverse(ReversedPluginDir)),
+    {ok, FakePluginEntry} = rebar_app_info:discover(PluginDir, State),
     FakePluginEntry2 = rebar_app_info:source(FakePluginEntry, checkout),
     rebar_state:all_plugin_deps(State, [FakePluginEntry2]).
 
