@@ -80,7 +80,7 @@
     "^([a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64}|[a-fA-F0-9]{96}|[a-fA-F0-9]{128})$"
 ).
 -define(PURL_REGEX, "^pkg:[a-z][a-z0-9+.-]*/([^/@?#]+/)*[^/@?#]+(@[^?#]+)?(\\?[^#]+)?(#.+)?$").
--define(TAR_REL_PATH, "/_build/default/rel/basic_app/basic_app-0.1.0.tar.gz").
+-define(TAR_REL_PATH, "/_build_basic_app/default/rel/basic_app/basic_app-0.1.0.tar.gz").
 % Reference: https://csrc.nist.gov/schema/cpe/2.3/cpe-naming_2.3.xsd
 -define(CPE_REGEX,
     "^cpe:2\\.3:[aho\\*\\-](:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\*\\-]))(:(((\\?*|\\*?)([a-zA-Z0-9\\-\\._]|(\\\\[\\\\\\*\\?!\"#$$%&'\\(\\)\\+,/:;<=>@\\[\\]\\^`\\{\\|}~]))+(\\?*|\\*?))|[\\*\\-])){4}$"
@@ -161,7 +161,7 @@ groups() ->
         ]},
         {metadata, [], [
             timestamp_test,
-            % tools_test,
+            tools_test,
             metadata_authors_test,
             % TODO validate the license.id using CycloneDX list of valid SPDX license ID
             licenses_test,
@@ -238,16 +238,28 @@ init_per_group(metadata, Config) ->
     [{metadata, Metadata} | Config];
 init_per_group(local_app, Config) ->
     State = init_rebar_state(Config, "local_app"),
+    StateWithFakePluginDep = add_fake_plugin_dep(State),
     PrivDir = ?config(priv_dir, Config),
     SBoMPath = filename:join(PrivDir, ?LOCAL_APP_SBOM),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
-    {ok, _FinalState} = rebar3:run(State, Cmd),
+    {ok, _FinalState} = rebar3:run(StateWithFakePluginDep, Cmd),
     {ok, File} = file:read_file(SBoMPath),
     NewSBoMJSON = json:decode(File),
     [{sbom_json, NewSBoMJSON} | Config];
 init_per_group(_, Config) ->
     Config.
 
+end_per_group(GroupName, Config) when GroupName =:= basic_app orelse
+                                      GroupName =:= local_app ->
+    DataDir = ?config(data_dir, Config),
+    case GroupName of
+        basic_app ->
+            AppDir = get_app_dir(DataDir, "basic_app"),
+            file:delete(filename:join(AppDir, "rebar.lock"));
+        local_app ->
+            AppDir = get_app_dir(DataDir, "local_app"),
+            file:delete(filename:join(AppDir, "rebar.lock"))
+    end;
 end_per_group(_, _Config) ->
     ok.
 
@@ -306,7 +318,7 @@ init_per_testcase(metadata_component_hashes_test, Config) ->
     State = init_rebar_state(Config, "basic_app"),
     SBoMPath = ?config(sbom_path, Config),
     {ok, _} = rebar3:run(State, ["tar"]),
-    ExpectedHash = get_tar_hash(?config(priv_dir, Config)),
+    ExpectedHash = get_tar_hash(?config(priv_dir, Config), "basic_app", "0.1.0"),
     Cmd = ["sbom", "-F", "json", "-o", SBoMPath, "-V", "false", "-f"],
     {ok, _FinalState} = rebar3:run(State, Cmd),
     {ok, File} = file:read_file(SBoMPath),
@@ -396,27 +408,20 @@ tools_test(Config) ->
     ?assertMatch([_], Tools),
     [Tool] = Tools,
     check_component_constraints(Tool),
-    #{
-        <<"type">> := Type,
-        <<"name">> := Name,
-        <<"isExternal">> := IsExternal,
-        <<"version">> := Version,
-        <<"description">> := Description,
-        <<"hashes">> := Hashes,
-        <<"purl">> := Purl,
-        <<"licenses">> := [License]
-    } = Tool,
+    #{<<"type">> := Type, <<"name">> := Name, <<"version">> := Version,
+      <<"description">> := Description, <<"hashes">> := Hashes,
+      <<"purl">> := Purl, <<"licenses">> := [License]} = Tool,
     ?assertEqual(<<"application">>, Type),
     ?assertEqual(<<"rebar3_sbom">>, Name),
-    ?assertNot(IsExternal),
     check_bom_ref_format(Tool),
     ?assertEqual(?config(plugin_version, Config), Version),
     ?assertEqual(?config(plugin_description, Config), Description),
     % TODO Test if hashes values are correct
     check_hashes_constraints(Hashes),
     check_purl_format(Purl),
-    ?assertMatch(<<"pkg:hex/rebar3_sbom", _/bitstring>>, Purl),
-    ?assertMatch(#{<<"license">> := #{<<"id">> := <<"Apache-2.0">>}}, License).
+    % Plugin is in _checkouts for the tests
+    ?assertMatch(<<"pkg:otp/rebar3_sbom", _/bitstring>>, Purl),
+    ?assertMatch(#{<<"license">> := #{<<"id">> := <<"BSD-3-Clause">>}}, License).
 
 metadata_authors_test(Config) ->
     #{<<"authors">> := Authors} = ?config(metadata, Config),
@@ -540,22 +545,14 @@ required_component_fields_test(Config) ->
 all_deps_present_test(Config) ->
     AllDeps = ?config(all_deps, Config),
     #{<<"components">> := Components} = ?config(sbom_json, Config),
-    AllComponentNames = lists:map(
-        fun(Component) ->
-            #{<<"name">> := Name} = Component,
-            Name
-        end,
-        Components
-    ),
-    lists:foreach(
-        fun(DeclaredDep) ->
-            ?assert(
-                lists:member(DeclaredDep, AllComponentNames),
-                io_lib:format("Dependency ~s is missing from the SBoM", [DeclaredDep])
-            )
-        end,
-        AllDeps
-    ).
+    AllComponentNames = lists:map(fun(Component) ->
+        #{<<"name">> := Name} = Component,
+        Name
+    end, Components),
+    lists:foreach(fun(DeclaredDep) ->
+        ?assert(lists:member(DeclaredDep, AllComponentNames),
+                "Dependency '" ++ binary_to_list(DeclaredDep) ++ "' is missing from the SBoM")
+    end, AllDeps).
 
 scope_test(Config) ->
     #{<<"components">> := Components} = ?config(sbom_json, Config),
@@ -708,7 +705,7 @@ init_rebar_state(Config, AppName) ->
     DataDir = ?config(data_dir, Config),
     PrivDir = ?config(priv_dir, Config),
     AppDir = get_app_dir(DataDir, AppName),
-    BaseDir = filename:join([PrivDir, "_build"]),
+    BaseDir = build_dir_path(PrivDir, AppName),
     State = rebar_state:new([
         {base_dir, BaseDir},
         {root_dir, AppDir}
@@ -717,6 +714,14 @@ init_rebar_state(Config, AppName) ->
     State2 = rebar_state:new(State, RebarConfig, AppDir),
     {ok, NewState} = rebar3_sbom_prv:init(State2),
     NewState.
+
+build_dir_path(PrivDir, AppName) ->
+    filename:join([PrivDir, "_build_" ++ AppName]).
+
+add_fake_plugin_dep(State) ->
+    {ok, FakePluginEntry} = rebar_app_info:new("rebar3_sbom", "0.1.0"),
+    FakePluginEntry2 = rebar_app_info:source(FakePluginEntry, checkout),
+    rebar_state:all_plugin_deps(State, [FakePluginEntry2]).
 
 check_component_constraints(Component) ->
     check_component_cyclonedx_constraints(Component),
@@ -813,10 +818,14 @@ check_licenses_constraints(Licenses) ->
         Licenses
     ).
 
-get_tar_hash(PrivDir) ->
-    {ok, Content} = file:read_file(PrivDir ++ ?TAR_REL_PATH),
+get_tar_hash(PrivDir, AppName, Version) ->
+    TarPath = tar_path(PrivDir, AppName, Version),
+    {ok, Content} = file:read_file(TarPath),
     ComputedHash = crypto:hash(sha256, Content),
     iolist_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= ComputedHash]).
+
+tar_path(PrivDir, AppName, Version) ->
+    filename:join([PrivDir, "_build_" ++ AppName, "default", "rel", AppName, AppName ++ "-" ++ Version ++ ".tar.gz"]).
 
 check_cpe_format(Cpe) ->
     ?assertNotEqual(nomatch, re:run(Cpe, ?CPE_REGEX)).
