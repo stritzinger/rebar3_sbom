@@ -247,8 +247,9 @@ init_per_group(local_app, Config) ->
 init_per_group(_, Config) ->
     Config.
 
-end_per_group(GroupName, Config) when GroupName =:= basic_app orelse
-                                      GroupName =:= local_app ->
+end_per_group(GroupName, Config) when
+    GroupName =:= basic_app orelse GroupName =:= local_app
+->
     DataDir = ?config(data_dir, Config),
     case GroupName of
         basic_app ->
@@ -406,9 +407,15 @@ tools_test(Config) ->
     ?assertMatch([_], Tools),
     [Tool] = Tools,
     check_component_constraints(Tool),
-    #{<<"type">> := Type, <<"name">> := Name, <<"version">> := Version,
-      <<"description">> := Description, <<"hashes">> := Hashes,
-      <<"purl">> := Purl, <<"licenses">> := [License]} = Tool,
+    #{
+        <<"type">> := Type,
+        <<"name">> := Name,
+        <<"version">> := Version,
+        <<"description">> := Description,
+        <<"hashes">> := Hashes,
+        <<"purl">> := Purl,
+        <<"licenses">> := [License]
+    } = Tool,
     ?assertEqual(<<"application">>, Type),
     ?assertEqual(<<"rebar3_sbom">>, Name),
     check_bom_ref_format(Tool),
@@ -543,14 +550,22 @@ required_component_fields_test(Config) ->
 all_deps_present_test(Config) ->
     AllDeps = ?config(all_deps, Config),
     #{<<"components">> := Components} = ?config(sbom_json, Config),
-    AllComponentNames = lists:map(fun(Component) ->
-        #{<<"name">> := Name} = Component,
-        Name
-    end, Components),
-    lists:foreach(fun(DeclaredDep) ->
-        ?assert(lists:member(DeclaredDep, AllComponentNames),
-                "Dependency '" ++ binary_to_list(DeclaredDep) ++ "' is missing from the SBoM")
-    end, AllDeps).
+    AllComponentNames = lists:map(
+        fun(Component) ->
+            #{<<"name">> := Name} = Component,
+            Name
+        end,
+        Components
+    ),
+    lists:foreach(
+        fun(DeclaredDep) ->
+            ?assert(
+                lists:member(DeclaredDep, AllComponentNames),
+                "Dependency '" ++ binary_to_list(DeclaredDep) ++ "' is missing from the SBoM"
+            )
+        end,
+        AllDeps
+    ).
 
 scope_test(Config) ->
     #{<<"components">> := Components} = ?config(sbom_json, Config),
@@ -718,7 +733,9 @@ build_dir_path(PrivDir, AppName) ->
 
 add_fake_plugin_dep(State, DataDir) ->
     SplitDataDir = filename:split(DataDir),
-    [_ | ReversedPluginDir] = lists:dropwhile(fun(Dir) -> Dir =/= "_build" end, lists:reverse(SplitDataDir)),
+    [_ | ReversedPluginDir] = lists:dropwhile(
+        fun(Dir) -> Dir =/= "_build" end, lists:reverse(SplitDataDir)
+    ),
     PluginDir = filename:join(lists:reverse(ReversedPluginDir)),
     {ok, FakePluginEntry} = rebar_app_info:discover(PluginDir, State),
     FakePluginEntry2 = rebar_app_info:source(FakePluginEntry, checkout),
@@ -826,7 +843,14 @@ get_tar_hash(PrivDir, AppName, Version) ->
     iolist_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= ComputedHash]).
 
 tar_path(PrivDir, AppName, Version) ->
-    filename:join([PrivDir, "_build_" ++ AppName, "default", "rel", AppName, AppName ++ "-" ++ Version ++ ".tar.gz"]).
+    filename:join([
+        PrivDir,
+        "_build_" ++ AppName,
+        "default",
+        "rel",
+        AppName,
+        AppName ++ "-" ++ Version ++ ".tar.gz"
+    ]).
 
 check_cpe_format(Cpe) ->
     ?assertNotEqual(nomatch, re:run(Cpe, ?CPE_REGEX)).

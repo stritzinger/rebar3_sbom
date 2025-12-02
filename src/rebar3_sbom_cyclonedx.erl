@@ -14,7 +14,9 @@
 bom(FileInfo, IsStrictVersion, App, Plugin, MetadataInfo) ->
     bom(FileInfo, IsStrictVersion, App, Plugin, uuid(), MetadataInfo).
 
-bom({FilePath, _} = FileInfo, IsStrictVersion, {AppInfo, RawComponents}, {PluginInfo, PluginDepsInfo}, Serial, MetadataInfo) ->
+bom({FilePath, _} = FileInfo, IsStrictVersion, App, Plugin, Serial, MetadataInfo) ->
+    {AppInfo, RawComponents} = App,
+    {PluginInfo, PluginDepsInfo} = Plugin,
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
     ValidPluginDepsInfo = lists:filter(fun(E) -> E =/= undefined end, PluginDepsInfo),
     AllDeps = dependencies(ValidRawComponents) ++ dependencies(ValidPluginDepsInfo),
@@ -22,7 +24,7 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, {AppInfo, RawComponents}, {Plugin
         serial = Serial,
         metadata = metadata(AppInfo, PluginInfo, MetadataInfo),
         components = components(ValidRawComponents),
-        dependencies = [dependency(AppInfo) , dependency(PluginInfo) | AllDeps]
+        dependencies = [dependency(AppInfo), dependency(PluginInfo) | AllDeps]
     },
     try
         V = version(FileInfo, IsStrictVersion, SBoM),

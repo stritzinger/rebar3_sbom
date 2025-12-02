@@ -63,9 +63,12 @@ do(State) ->
     [App0 | _] = rebar_state:project_apps(State),
     App = rebar_app_info:source(App0, root_app),
     PluginDeps = rebar_state:all_plugin_deps(State),
-    {value, Plugin} = lists:search(fun(Plugin) ->
-        rebar_app_info:name(Plugin) =:= <<"rebar3_sbom">>
-    end, PluginDeps),
+    {value, Plugin} = lists:search(
+        fun(Plugin) ->
+            rebar_app_info:name(Plugin) =:= <<"rebar3_sbom">>
+        end,
+        PluginDeps
+    ),
     PluginInfo = dep_info(Plugin),
     PluginDepsInfo = [dep_info(Dep) || Dep <- PluginDeps],
 
@@ -74,11 +77,18 @@ do(State) ->
     AppInfo = dep_info(App),
     AppInfo2 = [{sha256, hash(AppInfo, rebar_dir:base_dir(State))} | AppInfo],
     MetadataInfo = metadata(State),
-    SBoM = rebar3_sbom_cyclonedx:bom({FilePath, Format}, IsStrictVersion, {AppInfo2, DepsInfo}, {PluginInfo, PluginDepsInfo}, MetadataInfo),
-    Contents = case Format of
-        "xml" -> rebar3_sbom_xml:encode(SBoM);
-        "json" -> rebar3_sbom_json:encode(SBoM)
-    end,
+    SBoM = rebar3_sbom_cyclonedx:bom(
+        {FilePath, Format},
+        IsStrictVersion,
+        {AppInfo2, DepsInfo},
+        {PluginInfo, PluginDepsInfo},
+        MetadataInfo
+    ),
+    Contents =
+        case Format of
+            "xml" -> rebar3_sbom_xml:encode(SBoM);
+            "json" -> rebar3_sbom_json:encode(SBoM)
+        end,
     case write_file(FilePath, Contents, Force) of
         ok ->
             rebar_api:info("CycloneDX SBoM written to ~s", [FilePath]),
@@ -256,7 +266,7 @@ dep_info(_Name, _Version, {pkg, Name, Version, Sha256}, Common) ->
         {cpe, rebar3_sbom_cpe:cpe(Name, list_to_binary(Version), GitHubLink)}
         | Common
     ];
-dep_info(_Name, _Version, {pkg, Name, Version, _InnerChecksum, OuterChecksum, _RepoConfig}, Common) ->
+dep_info(_Name, _Version, {pkg, Name, Version, _InnerChecksum, OuterChecksum, _RepoConf}, Common) ->
     GitHubLink = proplists:get_value(github_link, Common, undefined),
     [
         {name, Name},
