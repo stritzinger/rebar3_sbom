@@ -265,10 +265,6 @@ decode(FilePath, "xml") ->
 decode(FilePath, "json") ->
     rebar3_sbom_json:decode(FilePath).
 
-%%
-%% Internal normalization and de-duplication helpers
-%%
-
 -spec normalize_sbom(#sbom{}) -> #sbom{}.
 normalize_sbom(#sbom{components = Components0, dependencies = Deps0} = S) ->
     Components = dedup(Components0),
