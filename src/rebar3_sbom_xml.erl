@@ -71,10 +71,9 @@ organization_to_xml(OrganizationType, undefined) ->
 organization_to_xml(OrganizationType, Organization) ->
     Content = prune_content([
         {name, [Organization#organization.name]},
-        {address, [address_to_xml(Organization#organization.address)]},
-        {url, [Url || Url <- Organization#organization.url]},
-        {contact, [contact_to_xml(Contact) || Contact <- Organization#organization.contact]}
-    ]),
+        address_to_xml(Organization#organization.address)
+    ] ++ [{url, [Url]} || Url <- Organization#organization.url]
+      ++ [contact_to_xml(Contact) || Contact <- Organization#organization.contact]),
     {OrganizationType, Content}.
 
 address_to_xml(Address) ->
@@ -82,9 +81,9 @@ address_to_xml(Address) ->
         {country, [Address#address.country]},
         {region, [Address#address.region]},
         {locality, [Address#address.locality]},
-        {post_office_box_number, [Address#address.post_office_box_number]},
-        {postal_code, [Address#address.postal_code]},
-        {street_address, [Address#address.street_address]}
+        {postOfficeBoxNumber, [Address#address.post_office_box_number]},
+        {postalCode, [Address#address.postal_code]},
+        {streetAddress, [Address#address.street_address]}
     ]),
     {address, Content}.
 
