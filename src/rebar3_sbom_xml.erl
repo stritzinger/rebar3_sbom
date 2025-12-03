@@ -46,18 +46,55 @@ sbom_to_xml(#sbom{metadata = Metadata} = SBoM) ->
             {serialNumber, SBoM#sbom.serial}
         ],
         [
-            {metadata, [
-                {timestamp, [Metadata#metadata.timestamp]},
-                {tools, [tools_to_xml(Metadata#metadata.tools)]},
-                component_to_xml(Metadata#metadata.component)
-            ]},
+            {metadata, metadata_to_xml(Metadata)},
             {components, [component_to_xml(C) || C <- SBoM#sbom.components]},
             {dependencies, [dependency_to_xml(D) || D <- SBoM#sbom.dependencies]}
         ]
     }.
 
+metadata_to_xml(Metadata) ->
+    Content = prune_content([
+        {timestamp, [Metadata#metadata.timestamp]},
+        {tools, [tools_to_xml(Metadata#metadata.tools)]},
+        component_field_to_xml(authors, Metadata#metadata.authors),
+        component_to_xml(Metadata#metadata.component),
+        organization_to_xml(manufacturer, Metadata#metadata.manufacturer),
+        component_field_to_xml(licenses, Metadata#metadata.licenses)
+    ]),
+    Content.
+
 tools_to_xml(Tools) ->
     {components, [component_to_xml(Tool) || Tool <- Tools]}.
+
+organization_to_xml(OrganizationType, undefined) ->
+    {OrganizationType, [undefined]};
+organization_to_xml(OrganizationType, Organization) ->
+    Content = prune_content([
+        {name, [Organization#organization.name]},
+        {address, [address_to_xml(Organization#organization.address)]},
+        {url, [Url || Url <- Organization#organization.url]},
+        {contact, [contact_to_xml(Contact) || Contact <- Organization#organization.contact]}
+    ]),
+    {OrganizationType, Content}.
+
+address_to_xml(Address) ->
+    Content = prune_content([
+        {country, [Address#address.country]},
+        {region, [Address#address.region]},
+        {locality, [Address#address.locality]},
+        {post_office_box_number, [Address#address.post_office_box_number]},
+        {postal_code, [Address#address.postal_code]},
+        {street_address, [Address#address.street_address]}
+    ]),
+    {address, Content}.
+
+contact_to_xml(Contact) ->
+    Content = prune_content([
+        {name, [Contact#individual.name]},
+        {email, [Contact#individual.email]},
+        {phone, [Contact#individual.phone]}
+    ]),
+    {contact, Content}.
 
 component_to_xml(C) ->
     Attributes = [{type, C#component.type}, {'bom-ref', C#component.bom_ref}],
