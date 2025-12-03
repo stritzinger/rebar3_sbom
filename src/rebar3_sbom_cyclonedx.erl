@@ -56,9 +56,9 @@ metadata(App, Plugin, MetadataInfo) ->
         timestamp = calendar:system_time_to_rfc3339(erlang:system_time(second)),
         tools = [component(Plugin)],
         manufacturer = manufacturer(proplists:get_value(manufacturer, MetadataInfo, undefined)),
-        authors = dedup(sbom_authors(proplists:get_value(author, MetadataInfo, undefined), App)),
+        authors = sbom_authors(proplists:get_value(author, MetadataInfo, undefined), App),
         component = component(App),
-        licenses = dedup(sbom_licenses(proplists:get_value(licenses, MetadataInfo, undefined), App))
+        licenses = sbom_licenses(proplists:get_value(licenses, MetadataInfo, undefined), App)
     }.
 
 -spec sbom_authors(Author, App) -> Authors when
@@ -96,7 +96,7 @@ component(RawComponent) ->
         description = component_field(description, RawComponent),
         scope = component_field(scope, RawComponent),
         hashes = component_field(sha256, RawComponent),
-        licenses = dedup(component_field(licenses, RawComponent)),
+        licenses = component_field(licenses, RawComponent),
         externalReferences = component_field(external_references, RawComponent),
         cpe = component_field(cpe, RawComponent),
         purl = component_field(purl, RawComponent)
@@ -191,8 +191,7 @@ individuals(Individuals) ->
     App :: proplists:proplist(),
     Authors :: [#individual{}].
 authors(App) ->
-    Names = proplists:get_value(authors, App, []),
-    dedup([#individual{name = Name} || Name <- Names]).
+    [#individual{name = Name} || Name <- proplists:get_value(authors, App, [])].
 
 uuid() ->
     [A, B, C, D, E] = [crypto:strong_rand_bytes(Len) || Len <- [4, 2, 2, 2, 6]],
@@ -272,10 +271,19 @@ decode(FilePath, "json") ->
     rebar3_sbom_json:decode(FilePath).
 
 -spec normalize_sbom(#sbom{}) -> #sbom{}.
-normalize_sbom(#sbom{components = Components0, dependencies = Deps0} = S) ->
-    Components = dedup(Components0),
+normalize_sbom(#sbom{metadata = Metadata0, components = Components0, dependencies = Deps0} = S) ->
+    Components = lists:map(fun normalize_component/1, dedup(Components0)),
+    Metadata = normalize_metadata(Metadata0),
     Deps = normalize_deps(Deps0),
-    S#sbom{components = Components, dependencies = Deps}.
+    S#sbom{metadata = Metadata, components = Components, dependencies = Deps}.
+
+-spec normalize_metadata(#metadata{}) -> #metadata{}.
+normalize_metadata(#metadata{authors = Authors0, licenses = Licenses0} = M) ->
+    M#metadata{authors = dedup(Authors0), licenses = dedup(Licenses0)}.
+
+-spec normalize_component(#component{}) -> #component{}.
+normalize_component(#component{authors = Authors0, licenses = Licenses0} = C) ->
+    C#component{authors = dedup(Authors0), licenses = dedup(Licenses0)}.
 
 -spec normalize_deps([#dependency{}]) -> [#dependency{}].
 normalize_deps(Deps0) ->
@@ -283,5 +291,4 @@ normalize_deps(Deps0) ->
     dedup(Deps1).
 
 -spec dedup([term()]) -> [term()].
-dedup(List) when is_list(List) ->
-    sets:to_list(sets:from_list(List)).
+dedup(List) when is_list(List) -> lists:uniq(List).
