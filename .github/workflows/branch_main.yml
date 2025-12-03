@@ -4,8 +4,7 @@
 on:
   push:
     branches:
-      # TODO: Rename master to main
-      - "master"
+      - "main"
 
 name: "Main Branch"
 
