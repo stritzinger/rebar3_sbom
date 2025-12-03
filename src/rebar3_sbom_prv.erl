@@ -3,8 +3,7 @@
 %% SPDX-FileCopyrightText: 2022 lafirest
 %% SPDX-FileCopyrightText: 2024 Sebastian Strollo
 %% SPDX-FileCopyrightText: 2024 Paulo F. Oliveira
-%% SPDX-FileCopyrightText: 2024 Máté Lajkó
-%% SPDX-FileCopyrightText: 2025 Stritzinger GmbH
+%% SPDX-FileCopyrightText: 2024 Stritzinger GmbH
 
 -module(rebar3_sbom_prv).
 
