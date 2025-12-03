@@ -38,10 +38,10 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, App, Plugin, Serial, MetadataInfo
         SBoM#sbom{version = V}
     catch
         _:Reason:_Stacktrace ->
-            logger:error(
-                "scan file:~ts failed, reason:~p, will use the default version number ~p",
-                [FilePath, Reason, ?DEFAULT_VERSION]
-            ),
+        rebar_api:error(
+            "scan file:~ts failed, reason:~p, will use the default version number ~p",
+            [FilePath, Reason, ?DEFAULT_VERSION]
+        ),
             SBoM
     end.
 
@@ -246,7 +246,7 @@ version(IsStrictVersion, {_, OldSBoM}) when not (IsStrictVersion) ->
         "Incrementing the SBoM version unconditionally: strict_version is set to false.", []
     ),
     OldSBoM#sbom.version + 1;
-version(IsStrictVersion, {NewSBoM, OldSBoM}) when not (IsStrictVersion) ->
+version(IsStrictVersion, {NewSBoM, OldSBoM}) when IsStrictVersion ->
     case is_sbom_equal(NewSBoM, OldSBoM) of
         true ->
             rebar_api:info(
