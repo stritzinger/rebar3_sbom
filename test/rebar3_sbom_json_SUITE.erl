@@ -408,8 +408,8 @@ timestamp_test(Config) ->
 tools_test(Config) ->
     % Assume that in basic_app we only have a component for rebar3_sbom
     #{<<"tools">> := Tools} = ?config(metadata, Config),
-    ?assertMatch([_], Tools),
-    [Tool] = Tools,
+    ?assertMatch(#{<<"components">> := [_|_]}, Tools),
+    #{<<"components">> := [Tool]} = Tools,
     check_component_constraints(Tool),
     #{
         <<"type">> := Type,
@@ -519,8 +519,8 @@ manufacturer_test(Config) ->
             <<"country">> := <<"Middle-earth">>,
             <<"region">> := <<"Shire">>,
             <<"locality">> := <<"Hobbiton">>,
-            <<"postal_code">> := <<"12345">>,
-            <<"street_address">> := <<"Bag End, Hobbiton, Shire">>
+            <<"postalCode">> := <<"12345">>,
+            <<"streetAddress">> := <<"Bag End, Hobbiton, Shire">>
         },
         Address
     ),
