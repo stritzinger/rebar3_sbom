@@ -38,10 +38,10 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, App, Plugin, Serial, MetadataInfo
         SBoM#sbom{version = V}
     catch
         _:Reason:_Stacktrace ->
-        rebar_api:error(
-            "scan file:~ts failed, reason:~p, will use the default version number ~p",
-            [FilePath, Reason, ?DEFAULT_VERSION]
-        ),
+            rebar_api:error(
+                "scan file:~ts failed, reason:~p, will use the default version number ~p",
+                [FilePath, Reason, ?DEFAULT_VERSION]
+            ),
             SBoM
     end.
 
