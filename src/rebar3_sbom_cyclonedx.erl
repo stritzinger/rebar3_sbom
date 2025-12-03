@@ -18,20 +18,16 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, App, Plugin, Serial, MetadataInfo
     {AppInfo, RawComponents} = App,
     {PluginInfo, PluginDepsInfo} = Plugin,
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
-    % Filtering out rebar3_sbom from plugin dependencies to avoid duplicates in output
-    ValidPluginDepsInfo = lists:filter(
-        fun(E) ->
-            E =/= undefined andalso proplists:get_value(name, E) =/= <<"rebar3_sbom">>
-        end,
-        PluginDepsInfo
-    ),
+    ValidPluginDepsInfo = lists:filter(fun(E) -> E =/= undefined end, PluginDepsInfo),
     AllDeps = dependencies(ValidRawComponents) ++ dependencies(ValidPluginDepsInfo),
-    SBoM = #sbom{
+    SBoM0 = #sbom{
         serial = Serial,
         metadata = metadata(AppInfo, PluginInfo, MetadataInfo),
         components = components(ValidRawComponents) ++ components(ValidPluginDepsInfo),
         dependencies = [dependency(AppInfo), dependency(PluginInfo) | AllDeps]
     },
+    % Normalize and remove duplicates where CycloneDX forbids them
+    SBoM = normalize_sbom(SBoM0),
     try
         V = version(FileInfo, IsStrictVersion, SBoM),
         SBoM#sbom{version = V}
@@ -54,9 +50,9 @@ metadata(App, Plugin, MetadataInfo) ->
         timestamp = calendar:system_time_to_rfc3339(erlang:system_time(second)),
         tools = [component(Plugin)],
         manufacturer = manufacturer(proplists:get_value(manufacturer, MetadataInfo, undefined)),
-        authors = sbom_authors(proplists:get_value(author, MetadataInfo, undefined), App),
+        authors = dedup(sbom_authors(proplists:get_value(author, MetadataInfo, undefined), App)),
         component = component(App),
-        licenses = sbom_licenses(proplists:get_value(licenses, MetadataInfo, undefined), App)
+        licenses = dedup(sbom_licenses(proplists:get_value(licenses, MetadataInfo, undefined), App))
     }.
 
 -spec sbom_authors(Author, App) -> Authors when
@@ -94,7 +90,7 @@ component(RawComponent) ->
         description = component_field(description, RawComponent),
         scope = component_field(scope, RawComponent),
         hashes = component_field(sha256, RawComponent),
-        licenses = component_field(licenses, RawComponent),
+        licenses = dedup(component_field(licenses, RawComponent)),
         externalReferences = component_field(external_references, RawComponent),
         cpe = component_field(cpe, RawComponent),
         purl = component_field(purl, RawComponent)
@@ -189,7 +185,8 @@ individuals(Individuals) ->
     App :: proplists:proplist(),
     Authors :: [#individual{}].
 authors(App) ->
-    [#individual{name = Name} || Name <- proplists:get_value(authors, App, [])].
+    Names = proplists:get_value(authors, App, []),
+    dedup([#individual{name = Name} || Name <- Names]).
 
 uuid() ->
     [A, B, C, D, E] = [crypto:strong_rand_bytes(Len) || Len <- [4, 2, 2, 2, 6]],
@@ -267,3 +264,22 @@ decode(FilePath, "xml") ->
     rebar3_sbom_xml:decode(FilePath);
 decode(FilePath, "json") ->
     rebar3_sbom_json:decode(FilePath).
+
+%%
+%% Internal normalization and de-duplication helpers
+%%
+
+-spec normalize_sbom(#sbom{}) -> #sbom{}.
+normalize_sbom(#sbom{components = Components0, dependencies = Deps0} = S) ->
+    Components = dedup(Components0),
+    Deps = normalize_deps(Deps0),
+    S#sbom{components = Components, dependencies = Deps}.
+
+-spec normalize_deps([#dependency{}]) -> [#dependency{}].
+normalize_deps(Deps0) ->
+    Deps1 = [D#dependency{dependencies = normalize_deps(D#dependency.dependencies)} || D <- Deps0],
+    dedup(Deps1).
+
+-spec dedup([term()]) -> [term()].
+dedup(List) when is_list(List) ->
+    sets:to_list(sets:from_list(List)).
