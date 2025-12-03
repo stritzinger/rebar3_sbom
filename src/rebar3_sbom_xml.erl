@@ -74,7 +74,7 @@ organization_to_xml(OrganizationType, Organization) ->
             {name, [Organization#organization.name]},
             address_to_xml(Organization#organization.address)
         ] ++ [{url, [Url]} || Url <- Organization#organization.url] ++
-            [contact_to_xml(Contact) || Contact <- Organization#organization.contact]
+            [individual_to_xml(contact, Contact) || Contact <- Organization#organization.contact]
     ),
     {OrganizationType, Content}.
 
@@ -88,14 +88,6 @@ address_to_xml(Address) ->
         {streetAddress, [Address#address.street_address]}
     ]),
     {address, Content}.
-
-contact_to_xml(Contact) ->
-    Content = prune_content([
-        {name, [Contact#individual.name]},
-        {email, [Contact#individual.email]},
-        {phone, [Contact#individual.phone]}
-    ]),
-    {contact, Content}.
 
 component_to_xml(C) ->
     Attributes = [{type, C#component.type}, {'bom-ref', C#component.bom_ref}],
@@ -123,7 +115,7 @@ prune_content(Content) ->
     ).
 
 component_field_to_xml(authors, Authors) ->
-    {authors, [author_to_xml(Author) || Author <- Authors]};
+    {authors, [individual_to_xml(author, Author) || Author <- Authors]};
 component_field_to_xml(hashes, Hashes) ->
     {hashes, [hash_to_xml(Hash) || Hash <- Hashes]};
 component_field_to_xml(licenses, Licenses) ->
@@ -135,13 +127,13 @@ component_field_to_xml(scope, Scope) ->
 component_field_to_xml(FieldName, Value) ->
     {FieldName, [Value]}.
 
-author_to_xml(Author) ->
+individual_to_xml(IndividualType, Individual) ->
     Content = prune_content([
-        {name, [Author#individual.name]},
-        {email, [Author#individual.email]},
-        {phone, [Author#individual.phone]}
+        {name, [Individual#individual.name]},
+        {email, [Individual#individual.email]},
+        {phone, [Individual#individual.phone]}
     ]),
-    {author, Content}.
+    {IndividualType, Content}.
 
 hash_to_xml(#{alg := Alg, hash := Hash}) ->
     {hash, [{alg, Alg}], [Hash]}.

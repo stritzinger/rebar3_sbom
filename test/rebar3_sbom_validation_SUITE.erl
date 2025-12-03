@@ -76,7 +76,15 @@ validate_xml_test(Config) ->
 cyclonedx_cli_path() ->
     Names = ["cyclonedx-cli", "cyclonedx"],
     Paths = [os:find_executable(Name) || Name <- Names],
-    case lists:filter(fun(Path) -> Path =/= false end, Paths) of
+    case
+        lists:filter(
+            fun
+                (false) -> false;
+                (_) -> true
+            end,
+            Paths
+        )
+    of
         [] ->
             ct:fail("CycloneDX CLI not found");
         [ValidPath | _] ->

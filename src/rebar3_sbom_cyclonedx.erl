@@ -269,22 +269,22 @@ decode(FilePath, "xml") ->
 decode(FilePath, "json") ->
     rebar3_sbom_json:decode(FilePath).
 
--spec normalize_sbom(#sbom{}) -> #sbom{}.
+-spec normalize_sbom(rebar3_sbom:sbom()) -> rebar3_sbom:sbom().
 normalize_sbom(#sbom{metadata = Metadata0, components = Components0, dependencies = Deps0} = S) ->
     Components = lists:map(fun normalize_component/1, dedup(Components0)),
     Metadata = normalize_metadata(Metadata0),
     Deps = normalize_deps(Deps0),
     S#sbom{metadata = Metadata, components = Components, dependencies = Deps}.
 
--spec normalize_metadata(#metadata{}) -> #metadata{}.
+-spec normalize_metadata(rebar3_sbom:metadata()) -> rebar3_sbom:metadata().
 normalize_metadata(#metadata{authors = Authors0, licenses = Licenses0} = M) ->
     M#metadata{authors = dedup(Authors0), licenses = dedup(Licenses0)}.
 
--spec normalize_component(#component{}) -> #component{}.
+-spec normalize_component(rebar3_sbom:component()) -> rebar3_sbom:component().
 normalize_component(#component{authors = Authors0, licenses = Licenses0} = C) ->
     C#component{authors = dedup(Authors0), licenses = dedup(Licenses0)}.
 
--spec normalize_deps([#dependency{}]) -> [#dependency{}].
+-spec normalize_deps([rebar3_sbom:dependency()]) -> [rebar3_sbom:dependency()].
 normalize_deps(Deps0) ->
     Deps1 = [D#dependency{dependencies = normalize_deps(D#dependency.dependencies)} || D <- Deps0],
     dedup(Deps1).
