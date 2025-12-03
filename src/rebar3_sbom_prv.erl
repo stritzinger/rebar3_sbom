@@ -275,7 +275,7 @@ dep_info(_Name, _Version, {pkg, Name, Version, _InnerChecksum, OuterChecksum, _R
         {cpe, rebar3_sbom_cpe:cpe(Name, Version, GitHubLink)}
         | Common
     ];
-dep_info(Name, DepVersion, {git, Git, GitRef}, Common) ->
+dep_info(Name, _DepVersion, {git, Git, GitRef}, Common) ->
     {Version, Purl, CPE} =
         case GitRef of
             {tag, Tag} ->
@@ -285,10 +285,10 @@ dep_info(Name, DepVersion, {git, Git, GitRef}, Common) ->
                 GeneratedCPE = rebar3_sbom_cpe:cpe(
                     Name, list_to_binary(Branch), list_to_binary(Git)
                 ),
-                {DepVersion, rebar3_sbom_purl:git(Name, Git, Branch), GeneratedCPE};
+                {Branch, rebar3_sbom_purl:git(Name, Git, Branch), GeneratedCPE};
             {ref, Ref} ->
                 GeneratedCPE = rebar3_sbom_cpe:cpe(Name, list_to_binary(Ref), list_to_binary(Git)),
-                {DepVersion, rebar3_sbom_purl:git(Name, Git, Ref), GeneratedCPE}
+                {Ref, rebar3_sbom_purl:git(Name, Git, Ref), GeneratedCPE}
         end,
     [
         {name, Name},

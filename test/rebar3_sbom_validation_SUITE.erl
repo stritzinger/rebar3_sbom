@@ -23,11 +23,10 @@
 
 %--- Common test functions -----------------------------------------------------
 
-% all() ->
-%     [validate_json_test,
-%     validate_xml_test].
-all() ->
-    [validate_json_test].
+all() -> [
+    validate_json_test,
+    validate_xml_test
+].
 
 init_per_suite(Config) ->
     application:load(rebar3_sbom),
@@ -68,8 +67,8 @@ validate_xml_test(Config) ->
     SBoMPath = ?config(sbom_path, Config),
     CycloneDXCLIPath = ?config(cyclonedx_cli_path, Config),
     Cmd = [CycloneDXCLIPath, "validate", "--input-file", SBoMPath, "--input-format", "xml"],
-    {ok, Output} = os:cmd(Cmd),
-    ?assertEqual(0, Output).
+    Output = os:cmd(lists:join(" ", Cmd)),
+    ?assertEqual("BOM validated successfully.\n", Output).
 
 %--- Private -------------------------------------------------------------------
 
