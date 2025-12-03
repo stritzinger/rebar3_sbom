@@ -61,7 +61,7 @@ validate_json_test(Config) ->
     SBoMPath = ?config(sbom_path, Config),
     CycloneDXCLIPath = ?config(cyclonedx_cli_path, Config),
     Cmd = [CycloneDXCLIPath, "validate", "--input-file", SBoMPath, "--input-format", "json"],
-    Output = os:cmd(lists:join(" " , Cmd)),
+    Output = os:cmd(lists:join(" ", Cmd)),
     ?assertEqual("BOM validated successfully.\n", Output).
 
 validate_xml_test(Config) ->

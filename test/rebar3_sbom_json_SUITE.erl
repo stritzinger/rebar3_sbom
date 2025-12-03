@@ -408,7 +408,7 @@ timestamp_test(Config) ->
 tools_test(Config) ->
     % Assume that in basic_app we only have a component for rebar3_sbom
     #{<<"tools">> := Tools} = ?config(metadata, Config),
-    ?assertMatch(#{<<"components">> := [_|_]}, Tools),
+    ?assertMatch(#{<<"components">> := [_ | _]}, Tools),
     #{<<"components">> := [Tool]} = Tools,
     check_component_constraints(Tool),
     #{
