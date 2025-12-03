@@ -23,11 +23,11 @@
 
 %--- Common test functions -----------------------------------------------------
 
-% all() ->
-%     [validate_json_test,
-%     validate_xml_test].
 all() ->
-    [validate_json_test].
+    [
+        validate_json_test,
+        validate_xml_test
+    ].
 
 init_per_suite(Config) ->
     application:load(rebar3_sbom),
@@ -68,15 +68,23 @@ validate_xml_test(Config) ->
     SBoMPath = ?config(sbom_path, Config),
     CycloneDXCLIPath = ?config(cyclonedx_cli_path, Config),
     Cmd = [CycloneDXCLIPath, "validate", "--input-file", SBoMPath, "--input-format", "xml"],
-    {ok, Output} = os:cmd(Cmd),
-    ?assertEqual(0, Output).
+    Output = os:cmd(lists:join(" ", Cmd)),
+    ?assertEqual("BOM validated successfully.\n", Output).
 
 %--- Private -------------------------------------------------------------------
 
 cyclonedx_cli_path() ->
     Names = ["cyclonedx-cli", "cyclonedx"],
     Paths = [os:find_executable(Name) || Name <- Names],
-    case lists:filter(fun(Path) -> Path =/= false end, Paths) of
+    case
+        lists:filter(
+            fun
+                (false) -> false;
+                (_) -> true
+            end,
+            Paths
+        )
+    of
         [] ->
             ct:fail("CycloneDX CLI not found");
         [ValidPath | _] ->

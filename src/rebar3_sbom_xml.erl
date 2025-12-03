@@ -46,18 +46,48 @@ sbom_to_xml(#sbom{metadata = Metadata} = SBoM) ->
             {serialNumber, SBoM#sbom.serial}
         ],
         [
-            {metadata, [
-                {timestamp, [Metadata#metadata.timestamp]},
-                {tools, [tool_to_xml(Tool) || Tool <- Metadata#metadata.tools]},
-                component_to_xml(Metadata#metadata.component)
-            ]},
+            {metadata, metadata_to_xml(Metadata)},
             {components, [component_to_xml(C) || C <- SBoM#sbom.components]},
             {dependencies, [dependency_to_xml(D) || D <- SBoM#sbom.dependencies]}
         ]
     }.
 
-tool_to_xml(Tool) ->
-    {tool, [{name, [Tool]}]}.
+metadata_to_xml(Metadata) ->
+    Content = prune_content([
+        {timestamp, [Metadata#metadata.timestamp]},
+        {tools, [tools_to_xml(Metadata#metadata.tools)]},
+        component_field_to_xml(authors, Metadata#metadata.authors),
+        component_to_xml(Metadata#metadata.component),
+        organization_to_xml(manufacturer, Metadata#metadata.manufacturer),
+        component_field_to_xml(licenses, Metadata#metadata.licenses)
+    ]),
+    Content.
+
+tools_to_xml(Tools) ->
+    {components, [component_to_xml(Tool) || Tool <- Tools]}.
+
+organization_to_xml(OrganizationType, undefined) ->
+    {OrganizationType, [undefined]};
+organization_to_xml(OrganizationType, Organization) ->
+    Content = prune_content(
+        [
+            {name, [Organization#organization.name]},
+            address_to_xml(Organization#organization.address)
+        ] ++ [{url, [Url]} || Url <- Organization#organization.url] ++
+            [individual_to_xml(contact, Contact) || Contact <- Organization#organization.contact]
+    ),
+    {OrganizationType, Content}.
+
+address_to_xml(Address) ->
+    Content = prune_content([
+        {country, [Address#address.country]},
+        {region, [Address#address.region]},
+        {locality, [Address#address.locality]},
+        {postOfficeBoxNumber, [Address#address.post_office_box_number]},
+        {postalCode, [Address#address.postal_code]},
+        {streetAddress, [Address#address.street_address]}
+    ]),
+    {address, Content}.
 
 component_to_xml(C) ->
     Attributes = [{type, C#component.type}, {'bom-ref', C#component.bom_ref}],
@@ -69,27 +99,41 @@ component_to_xml(C) ->
         component_field_to_xml(scope, C#component.scope),
         component_field_to_xml(hashes, C#component.hashes),
         component_field_to_xml(licenses, C#component.licenses),
+        component_field_to_xml(cpe, C#component.cpe),
         component_field_to_xml(purl, C#component.purl),
         component_field_to_xml(externalReferences, C#component.externalReferences)
     ]),
     {component, Attributes, Content}.
 
 prune_content(Content) ->
-    lists:filter(fun(Field) -> Field =/= undefined end, Content).
+    lists:filter(
+        fun
+            ({_, [Value]}) -> Value =/= undefined;
+            (Field) -> Field =/= undefined
+        end,
+        Content
+    ).
 
 component_field_to_xml(authors, Authors) ->
-    {authors, [author_to_xml(Author) || Author <- Authors]};
+    {authors, [individual_to_xml(author, Author) || Author <- Authors]};
 component_field_to_xml(hashes, Hashes) ->
     {hashes, [hash_to_xml(Hash) || Hash <- Hashes]};
 component_field_to_xml(licenses, Licenses) ->
     {licenses, [license_to_xml(License) || License <- Licenses]};
 component_field_to_xml(externalReferences, ExternalReferences) ->
     {externalReferences, [external_reference_to_xml(Ref) || Ref <- ExternalReferences]};
+component_field_to_xml(scope, Scope) ->
+    {scope, [atom_to_list(Scope)]};
 component_field_to_xml(FieldName, Value) ->
     {FieldName, [Value]}.
 
-author_to_xml(#{name := Name}) ->
-    {author, [{name, [Name]}]}.
+individual_to_xml(IndividualType, Individual) ->
+    Content = prune_content([
+        {name, [Individual#individual.name]},
+        {email, [Individual#individual.email]},
+        {phone, [Individual#individual.phone]}
+    ]),
+    {IndividualType, Content}.
 
 hash_to_xml(#{alg := Alg, hash := Hash}) ->
     {hash, [{alg, Alg}], [Hash]}.
@@ -118,6 +162,7 @@ xml_to_component(Component) ->
     Description = xpath("/component/description/text()", Component),
     Scope = xpath("/component/scope/text()", Component),
     Purl = xpath("/component/purl/text()", Component),
+    Cpe = xpath("/component/cpe/text()", Component),
     Hashes = [xml_to_hash(H) || H <- xpath("/component/hashes/hash", Component)],
     ExternalReferences = [
         xml_to_external_reference(Ref)
@@ -133,6 +178,7 @@ xml_to_component(Component) ->
         description = xml_to_component_field(Description),
         scope = xml_to_component_field(Scope),
         purl = xml_to_component_field(Purl),
+        cpe = xml_to_component_field(Cpe),
         hashes = replace_if_empty(Hashes),
         licenses = replace_if_empty(Licenses),
         externalReferences = replace_if_empty(ExternalReferences)
