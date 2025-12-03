@@ -11,16 +11,26 @@
 
 -include("rebar3_sbom.hrl").
 
-bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, MetadataInfo) ->
-    bom(FileInfo, IsStrictVersion, AppInfo, RawComponents, uuid(), MetadataInfo).
+bom(FileInfo, IsStrictVersion, App, Plugin, MetadataInfo) ->
+    bom(FileInfo, IsStrictVersion, App, Plugin, uuid(), MetadataInfo).
 
-bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial, MetadataInfo) ->
+bom({FilePath, _} = FileInfo, IsStrictVersion, App, Plugin, Serial, MetadataInfo) ->
+    {AppInfo, RawComponents} = App,
+    {PluginInfo, PluginDepsInfo} = Plugin,
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
+    % Filtering out rebar3_sbom from plugin dependencies to avoid duplicates in output
+    ValidPluginDepsInfo = lists:filter(
+        fun(E) ->
+            E =/= undefined andalso proplists:get_value(name, E) =/= <<"rebar3_sbom">>
+        end,
+        PluginDepsInfo
+    ),
+    AllDeps = dependencies(ValidRawComponents) ++ dependencies(ValidPluginDepsInfo),
     SBoM = #sbom{
         serial = Serial,
-        metadata = metadata(AppInfo, MetadataInfo),
-        components = components(ValidRawComponents),
-        dependencies = [dependency(AppInfo) | dependencies(ValidRawComponents)]
+        metadata = metadata(AppInfo, PluginInfo, MetadataInfo),
+        components = components(ValidRawComponents) ++ components(ValidPluginDepsInfo),
+        dependencies = [dependency(AppInfo), dependency(PluginInfo) | AllDeps]
     },
     try
         V = version(FileInfo, IsStrictVersion, SBoM),
@@ -34,14 +44,15 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, AppInfo, RawComponents, Serial, M
             SBoM
     end.
 
--spec metadata(App, MetadataInfo) -> Metadata when
+-spec metadata(App, Plugin, MetadataInfo) -> Metadata when
     App :: proplists:proplist(),
+    Plugin :: proplists:proplist(),
     MetadataInfo :: proplists:proplist(),
     Metadata :: #metadata{}.
-metadata(App, MetadataInfo) ->
+metadata(App, Plugin, MetadataInfo) ->
     #metadata{
         timestamp = calendar:system_time_to_rfc3339(erlang:system_time(second)),
-        tools = [?APP],
+        tools = [component(Plugin)],
         manufacturer = manufacturer(proplists:get_value(manufacturer, MetadataInfo, undefined)),
         authors = sbom_authors(proplists:get_value(author, MetadataInfo, undefined), App),
         component = component(App),

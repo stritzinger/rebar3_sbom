@@ -78,7 +78,7 @@ individual_to_json(Individual) ->
 metadata_to_json(Metadata) ->
     prune_content(#{
         timestamp => bin(Metadata#metadata.timestamp),
-        tools => [#{name => bin(T)} || T <- Metadata#metadata.tools],
+        tools => [component_to_json(T) || T <- Metadata#metadata.tools],
         component => component_to_json(Metadata#metadata.component),
         manufacturer => manufacturer_to_json(Metadata#metadata.manufacturer),
         authors => individuals_to_json(Metadata#metadata.authors),

@@ -81,7 +81,7 @@
 -record(metadata, {
     timestamp :: string(),
     component :: #component{},
-    tools = [] :: [string()],
+    tools = [] :: [#component{}],
     manufacturer = undefined :: #organization{} | undefined,
     authors = [] :: [#individual{}],
     licenses = [] :: [#license{}],
