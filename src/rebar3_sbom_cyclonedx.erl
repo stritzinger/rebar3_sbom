@@ -18,6 +18,7 @@ bom({FilePath, _} = FileInfo, IsStrictVersion, App, Plugin, Serial, MetadataInfo
     {AppInfo, RawComponents} = App,
     {PluginInfo, PluginDepsInfo} = Plugin,
     ValidRawComponents = lists:filter(fun(E) -> E =/= undefined end, RawComponents),
+    % Filtering out rebar3_sbom from plugin dependencies to avoid duplicates in output
     ValidPluginDepsInfo = lists:filter(
         fun(E) ->
             E =/= undefined andalso proplists:get_value(name, E) =/= <<"rebar3_sbom">>
