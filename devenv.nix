@@ -21,4 +21,14 @@ in
     # Switch back to normal packages when Erlang 28.2 is available there
     package = pkgs-unstable.beam28Packages.erlang;
   };
+
+  git-hooks.hooks = {
+    erlfmt = {
+      enable = true;
+      name = "Erlfmt Check";
+      entry = "rebar3 fmt --check";
+      files = "\\.(erl|hrl|app.src|config)$";
+      pass_filenames = false;
+    };
+  };
 }
