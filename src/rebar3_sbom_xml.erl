@@ -69,11 +69,13 @@ tools_to_xml(Tools) ->
 organization_to_xml(OrganizationType, undefined) ->
     {OrganizationType, [undefined]};
 organization_to_xml(OrganizationType, Organization) ->
-    Content = prune_content([
-        {name, [Organization#organization.name]},
-        address_to_xml(Organization#organization.address)
-    ] ++ [{url, [Url]} || Url <- Organization#organization.url]
-      ++ [contact_to_xml(Contact) || Contact <- Organization#organization.contact]),
+    Content = prune_content(
+        [
+            {name, [Organization#organization.name]},
+            address_to_xml(Organization#organization.address)
+        ] ++ [{url, [Url]} || Url <- Organization#organization.url] ++
+            [contact_to_xml(Contact) || Contact <- Organization#organization.contact]
+    ),
     {OrganizationType, Content}.
 
 address_to_xml(Address) ->
@@ -112,8 +114,13 @@ component_to_xml(C) ->
     {component, Attributes, Content}.
 
 prune_content(Content) ->
-    lists:filter(fun({_, [Value]}) -> Value =/= undefined;
-                    (Field) -> Field =/= undefined end, Content).
+    lists:filter(
+        fun
+            ({_, [Value]}) -> Value =/= undefined;
+            (Field) -> Field =/= undefined
+        end,
+        Content
+    ).
 
 component_field_to_xml(authors, Authors) ->
     {authors, [author_to_xml(Author) || Author <- Authors]};

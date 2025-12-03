@@ -23,10 +23,11 @@
 
 %--- Common test functions -----------------------------------------------------
 
-all() -> [
-    validate_json_test,
-    validate_xml_test
-].
+all() ->
+    [
+        validate_json_test,
+        validate_xml_test
+    ].
 
 init_per_suite(Config) ->
     application:load(rebar3_sbom),
