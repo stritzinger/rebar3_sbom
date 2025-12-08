@@ -183,7 +183,7 @@ json_to_component_field(<<"scope">> = F, Component) ->
                 <<"optional">> -> optional;
                 <<"excluded">> -> excluded
             end
-        end;
+    end;
 json_to_component_field(FieldName, Component) ->
     str(maps:get(FieldName, Component, undefined)).
 
