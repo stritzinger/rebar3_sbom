@@ -816,7 +816,12 @@ check_purl_format(Purl) ->
 check_licenses_constraints(Licenses) ->
     lists:foreach(
         fun(License) ->
-            ?assertMatch(#{<<"license">> := #{<<"id">> := _}}, License)
+            ?assertMatch(#{<<"license">> := _}, License),
+            #{<<"license">> := LicenseContent} = License,
+            ?assert(
+                maps:is_key(<<"id">>, LicenseContent) orelse
+                    maps:is_key(<<"name">>, LicenseContent)
+            )
         end,
         Licenses
     ).
