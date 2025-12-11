@@ -138,10 +138,12 @@ individual_to_xml(IndividualType, Individual) ->
 hash_to_xml(#{alg := Alg, hash := Hash}) ->
     {hash, [{alg, Alg}], [Hash]}.
 
-license_to_xml(#{name := Name}) ->
-    {license, [{name, [Name]}]};
-license_to_xml(#{id := Id}) ->
-    {license, [{id, [Id]}]}.
+license_to_xml(License) ->
+    Content = prune_content([
+        {name, [License#license.name]},
+        {id, [License#license.id]}
+    ]),
+    {license, Content}.
 
 external_reference_to_xml(#external_reference{type = Type, url = Url}) ->
     {reference, [{type, Type}], [{url, [Url]}]}.
@@ -212,10 +214,10 @@ xml_to_external_reference(ExternalReferenceElement) ->
 xml_to_license(LicenseElement) ->
     case xpath("/license/id/text()", LicenseElement) of
         [Value] ->
-            #{id => Value#xmlText.value};
+            #license{id = Value#xmlText.value};
         [] ->
             [Value] = xpath("/license/name/text()", LicenseElement),
-            #{name => Value#xmlText.value}
+            #license{name = Value#xmlText.value}
     end.
 
 xpath(String, Xml) ->
