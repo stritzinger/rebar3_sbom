@@ -58,7 +58,7 @@
     bom_ref :: bom_ref() | undefined,
     id :: spdx_licence_id() | undefined,
     name :: string() | undefined,
-    acknowledgement :: declared | concluded,
+    acknowledgement :: declared | concluded | undefined,
     properties = [] :: properties()
 }).
 
