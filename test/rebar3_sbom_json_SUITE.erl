@@ -818,8 +818,10 @@ check_licenses_constraints(Licenses) ->
         fun(License) ->
             ?assertMatch(#{<<"license">> := _}, License),
             #{<<"license">> := LicenseContent} = License,
-            ?assert(maps:is_key(<<"id">>, LicenseContent) orelse
-                    maps:is_key(<<"name">>, LicenseContent))
+            ?assert(
+                maps:is_key(<<"id">>, LicenseContent) orelse
+                    maps:is_key(<<"name">>, LicenseContent)
+            )
         end,
         Licenses
     ).

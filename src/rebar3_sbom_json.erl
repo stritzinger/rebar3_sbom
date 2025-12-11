@@ -129,10 +129,12 @@ licenses_to_json(Licenses) ->
     [license_to_json(L) || L <- Licenses].
 
 license_to_json(License) ->
-    #{license => prune_content(#{
-        name => bin(License#license.name),
-        id => bin(License#license.id)
-    })}.
+    #{
+        license => prune_content(#{
+            name => bin(License#license.name),
+            id => bin(License#license.id)
+        })
+    }.
 
 dependency_to_json(D) ->
     #{
@@ -214,8 +216,10 @@ json_to_licenses(Licenses) ->
     [json_to_license(L) || L <- Licenses].
 
 json_to_license(#{<<"license">> := License}) ->
-    #license{id = str(maps:get(<<"id">>, License, undefined)),
-             name = str(maps:get(<<"name">>, License, undefined))}.
+    #license{
+        id = str(maps:get(<<"id">>, License, undefined)),
+        name = str(maps:get(<<"name">>, License, undefined))
+    }.
 
 json_to_external_references(undefined) ->
     undefined;
