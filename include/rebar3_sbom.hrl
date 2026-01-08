@@ -8,7 +8,7 @@
 -define(DEFAULT_VERSION, 1).
 -define(PROVIDER, sbom).
 -define(DEPS, [lock]).
--define(SPEC_VERSION, <<"1.6">>).
+-define(SPEC_VERSION, <<"1.7">>).
 -define(CPE_VERSION, <<"2.3">>).
 
 %--- Types ---------------------------------------------------------------------
